@@ -67,7 +67,7 @@ const printRoot = document.querySelector("#printRoot");
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=16").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=17").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -181,7 +181,7 @@ function renderCorrectionPhotos() {
           <button class="remove-photo" type="button" data-remove-correction="${photo.id}" aria-label="写真を削除">×</button>
           <label class="field">
             <span>是正依頼文</span>
-            <textarea data-correction-field="comment" rows="3" placeholder="是正依頼文を入力">${escapeHtml(photo.comment || "")}</textarea>
+            <textarea data-correction-field="comment" rows="2" placeholder="是正依頼文を入力">${escapeHtml(photo.comment || "")}</textarea>
           </label>
         </article>
       `).join("")

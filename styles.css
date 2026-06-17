@@ -279,24 +279,24 @@ textarea {
 
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .photo-tile {
   position: relative;
   overflow: hidden;
-  min-height: 116px;
+  aspect-ratio: 1;
+  min-height: 0;
   border-radius: 8px;
   background: #dde4e0;
   content-visibility: auto;
-  contain-intrinsic-size: 116px 116px;
+  contain-intrinsic-size: 84px 84px;
 }
 
 .photo-tile img {
   width: 100%;
   height: 100%;
-  min-height: 116px;
   object-fit: cover;
   display: block;
 }
@@ -304,10 +304,10 @@ textarea {
 .photo-tile button,
 .correction-card .remove-photo {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 30px;
-  height: 30px;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.62);
@@ -316,26 +316,43 @@ textarea {
 
 .correction-list {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .correction-card {
   position: relative;
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfb;
   content-visibility: auto;
-  contain-intrinsic-size: 360px;
+  contain-intrinsic-size: 190px;
 }
 
 .correction-card img {
   width: 100%;
-  max-height: 280px;
+  aspect-ratio: 4 / 3;
+  height: auto;
   border-radius: 8px;
   object-fit: cover;
+}
+
+.correction-card .field {
+  gap: 4px;
+}
+
+.correction-card .field span {
+  font-size: 11px;
+}
+
+.correction-card textarea {
+  min-height: 54px;
+  padding: 7px 8px;
+  font-size: 12px;
 }
 
 .action-grid {
@@ -791,6 +808,10 @@ button.primary {
   }
 
   .photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .correction-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
