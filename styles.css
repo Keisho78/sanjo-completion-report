@@ -289,6 +289,8 @@ textarea {
   min-height: 116px;
   border-radius: 8px;
   background: #dde4e0;
+  content-visibility: auto;
+  contain-intrinsic-size: 116px 116px;
 }
 
 .photo-tile img {
@@ -325,6 +327,8 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfb;
+  content-visibility: auto;
+  contain-intrinsic-size: 360px;
 }
 
 .correction-card img {

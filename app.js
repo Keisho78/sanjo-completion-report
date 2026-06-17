@@ -51,9 +51,7 @@ const state = {
   correctionPhotos: []
 };
 
-const PHOTO_MAX_DIMENSION = 1400;
-const PHOTO_JPEG_QUALITY = 0.82;
-const RENDER_BATCH_SIZE = 6;
+const PHOTO_STATUS_BATCH_SIZE = 50;
 
 const form = document.querySelector("#reportForm");
 const saveStatus = document.querySelector("#saveStatus");
@@ -69,7 +67,7 @@ const printRoot = document.querySelector("#printRoot");
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=15").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=16").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -126,73 +124,37 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
   if (!list.length) return;
 
   setPhotoInputsDisabled(true);
-  for (let index = 0; index < list.length; index += 1) {
-    saveStatus.textContent = `写真処理 ${index + 1}/${list.length}`;
-    const photo = await readPhotoFile(list[index]);
-    if (photo) collection.push(decoratePhoto ? decoratePhoto(photo) : photo);
-
-    if ((index + 1) % RENDER_BATCH_SIZE === 0 || index === list.length - 1) {
-      render();
-      await nextFrame();
-    }
-  }
-  setPhotoInputsDisabled(false);
-  saveDraft();
-}
-
-async function readPhotoFile(file) {
-  const sourceUrl = URL.createObjectURL(file);
   try {
-    const src = await createCompressedPhotoUrl(sourceUrl);
-    URL.revokeObjectURL(sourceUrl);
-    return {
-      id: createId(),
-      name: file.name,
-      src
-    };
-  } catch (error) {
-    return {
-      id: createId(),
-      name: file.name,
-      src: sourceUrl
-    };
+    const addedPhotos = [];
+    for (let index = 0; index < list.length; index += 1) {
+      try {
+        const photo = readPhotoFile(list[index]);
+        addedPhotos.push(decoratePhoto ? decoratePhoto(photo) : photo);
+      } catch (error) {
+        console.warn("写真を追加できませんでした", error);
+      }
+
+      if ((index + 1) % PHOTO_STATUS_BATCH_SIZE === 0) {
+        saveStatus.textContent = `写真追加 ${index + 1}/${list.length}`;
+        await nextFrame();
+      }
+    }
+
+    collection.push(...addedPhotos);
+    render();
+    saveStatus.textContent = `写真追加 ${addedPhotos.length}枚`;
+    saveDraft();
+  } finally {
+    setPhotoInputsDisabled(false);
   }
 }
 
-function createCompressedPhotoUrl(sourceUrl) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const width = image.naturalWidth || image.width;
-      const height = image.naturalHeight || image.height;
-      if (!width || !height) {
-        reject(new Error("Image size is unavailable"));
-        return;
-      }
-
-      const scale = Math.min(1, PHOTO_MAX_DIMENSION / width, PHOTO_MAX_DIMENSION / height);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) {
-        reject(new Error("Canvas is unavailable"));
-        return;
-      }
-      context.fillStyle = "#fff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          reject(new Error("Image compression failed"));
-          return;
-        }
-        resolve(URL.createObjectURL(blob));
-      }, "image/jpeg", PHOTO_JPEG_QUALITY);
-    };
-    image.onerror = () => reject(new Error("Image load failed"));
-    image.src = sourceUrl;
-  });
+function readPhotoFile(file) {
+  return {
+    id: createId(),
+    name: file.name,
+    src: URL.createObjectURL(file)
+  };
 }
 
 function setPhotoInputsDisabled(disabled) {
