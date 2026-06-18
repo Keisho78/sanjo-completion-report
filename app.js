@@ -91,7 +91,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=27").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=28").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -588,6 +588,178 @@ function exportJson() {
   URL.revokeObjectURL(link.href);
 }
 
+async function exportFloorPlanPdf() {
+  if (!state.floorPlan?.src) {
+    saveStatus.textContent = "図面を追加";
+    return false;
+  }
+
+  const image = await loadImage(state.floorPlan.src);
+  const canvas = document.createElement("canvas");
+  canvas.width = 2480;
+  canvas.height = 1754;
+  const context = canvas.getContext("2d");
+  const pageWidth = canvas.width;
+  const pageHeight = canvas.height;
+  const imageAspect = image.naturalWidth / image.naturalHeight;
+  const pageAspect = pageWidth / pageHeight;
+  const drawWidth = imageAspect >= pageAspect ? pageWidth : pageHeight * imageAspect;
+  const drawHeight = imageAspect >= pageAspect ? pageWidth / imageAspect : pageHeight;
+  const drawX = (pageWidth - drawWidth) / 2;
+  const drawY = (pageHeight - drawHeight) / 2;
+
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, pageWidth, pageHeight);
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  drawPlanMarkersForPdf(context, drawX, drawY, drawWidth, drawHeight);
+  drawPlanLegendForPdf(context, pageWidth, pageHeight);
+
+  const jpegBytes = await canvasToJpegBytes(canvas);
+  const pdfBytes = createSingleImagePdf(jpegBytes, canvas.width, canvas.height, 841.89, 595.28);
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  downloadBlob(blob, `${getOutputFileName()}_間取図.pdf`);
+  saveStatus.textContent = "PDF保存";
+  return true;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function drawPlanMarkersForPdf(context, drawX, drawY, drawWidth, drawHeight) {
+  const size = 34;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = "700 19px system-ui, -apple-system, sans-serif";
+  state.planMarkers.forEach((marker) => {
+    const x = drawX + (drawWidth * marker.x) / 100;
+    const y = drawY + (drawHeight * marker.y) / 100;
+    context.beginPath();
+    context.arc(x, y, size / 2, 0, Math.PI * 2);
+    context.fillStyle = "rgba(255, 255, 255, 0.92)";
+    context.fill();
+    context.lineWidth = 3;
+    context.strokeStyle = "#111";
+    context.stroke();
+    context.fillStyle = "#111";
+    context.fillText(marker.symbol, x, y + 1);
+  });
+}
+
+function drawPlanLegendForPdf(context, pageWidth, pageHeight) {
+  const legend = [
+    ["1", "建具（窓・扉）不具合"],
+    ["2", "建具（網戸・雨戸）不具合"],
+    ["3", "クレセント / 取手不具合"],
+    ["4", "電気不具合"],
+    ["5", "水漏れ"],
+    ["6", "木部腐食"],
+    ["7", "シロアリ跡あり"],
+    ["8", "外壁不具合"],
+    ["●", "雨漏れ跡"],
+    ["○", "床鳴り"]
+  ];
+  const margin = 26;
+  const boxHeight = 58;
+  const boxY = pageHeight - boxHeight - 18;
+  const columns = 5;
+  const columnWidth = (pageWidth - margin * 2) / columns;
+
+  context.fillStyle = "rgba(255, 255, 255, 0.94)";
+  context.fillRect(margin, boxY, pageWidth - margin * 2, boxHeight);
+  context.strokeStyle = "#111";
+  context.lineWidth = 2;
+  context.strokeRect(margin, boxY, pageWidth - margin * 2, boxHeight);
+  context.fillStyle = "#111";
+  context.font = "700 12px system-ui, -apple-system, sans-serif";
+  context.textAlign = "left";
+  context.textBaseline = "top";
+
+  legend.forEach(([symbol, label], index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = margin + column * columnWidth + 10;
+    const y = boxY + 9 + row * 23;
+    context.fillText(`${symbol} ${label}`, x, y);
+  });
+}
+
+function canvasToJpegBytes(canvas) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      blob.arrayBuffer().then((buffer) => resolve(new Uint8Array(buffer)));
+    }, "image/jpeg", 0.92);
+  });
+}
+
+function createSingleImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeight) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [0];
+  let offset = 0;
+
+  const addBytes = (bytes) => {
+    chunks.push(bytes);
+    offset += bytes.length;
+  };
+  const addText = (text) => addBytes(encoder.encode(text));
+  const startObject = (number) => {
+    offsets[number] = offset;
+    addText(`${number} 0 obj\n`);
+  };
+  const endObject = () => addText("\nendobj\n");
+
+  addText("%PDF-1.4\n");
+  startObject(1);
+  addText("<< /Type /Catalog /Pages 2 0 R >>");
+  endObject();
+  startObject(2);
+  addText("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  endObject();
+  startObject(3);
+  addText(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+  endObject();
+  startObject(4);
+  addText(`<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);
+  addBytes(imageBytes);
+  addText("\nendstream");
+  endObject();
+  startObject(5);
+  const content = `q ${pageWidth} 0 0 ${pageHeight} 0 0 cm /Im0 Do Q`;
+  addText(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  endObject();
+
+  const xrefOffset = offset;
+  addText(`xref\n0 6\n0000000000 65535 f \n`);
+  for (let index = 1; index <= 5; index += 1) {
+    addText(`${String(offsets[index]).padStart(10, "0")} 00000 n \n`);
+  }
+  addText(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+  const result = new Uint8Array(offset);
+  let cursor = 0;
+  chunks.forEach((chunk) => {
+    result.set(chunk, cursor);
+    cursor += chunk.length;
+  });
+  return result;
+}
+
+function downloadBlob(blob, filename) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 function updateCorrectionPhoto(id, field, value) {
   const photo = state.correctionPhotos.find((item) => item.id === id);
   if (!photo) return;
@@ -914,7 +1086,12 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
   previewDialog.close();
 });
 
-document.querySelector("#printButton").addEventListener("click", () => {
+document.querySelector("#printButton").addEventListener("click", async () => {
+  const selectedOutputs = getSelectedOutputs();
+  if (selectedOutputs.length === 1 && selectedOutputs[0] === "plan") {
+    await exportFloorPlanPdf();
+    return;
+  }
   if (!buildPreview()) return;
   setPrintDocumentTitle();
   document.body.classList.add("is-printing");
