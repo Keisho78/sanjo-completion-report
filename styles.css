@@ -111,7 +111,7 @@ h2 {
   top: 72px;
   z-index: 9;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   padding: 5px;
   border: 1px solid var(--line);
@@ -421,6 +421,99 @@ textarea {
   min-height: 54px;
   padding: 7px 8px;
   font-size: 12px;
+}
+
+.plan-tools {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.symbol-chip {
+  min-height: 42px;
+  padding: 0;
+  border-color: var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.symbol-chip.is-active {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.plan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.plan-actions button {
+  min-height: 38px;
+  font-size: 13px;
+}
+
+.plan-board {
+  position: relative;
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none;
+}
+
+.plan-image {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+}
+
+.plan-marker,
+.plan-print-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.plan-marker {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  z-index: 2;
+}
+
+.plan-marker:active {
+  cursor: grabbing;
+}
+
+.symbol-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .action-grid {
@@ -788,6 +881,61 @@ button.primary {
   text-align: center;
 }
 
+.plan-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+}
+
+.plan-print-meta {
+  display: grid;
+  grid-template-columns: 20mm 1fr;
+  border: 1px solid #222;
+  font-size: 9px;
+}
+
+.plan-print-meta strong,
+.plan-print-meta span {
+  padding: 1.5mm 2mm;
+}
+
+.plan-print-meta strong {
+  border-right: 1px solid #222;
+  text-align: center;
+}
+
+.plan-print-frame {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  place-items: center;
+  border: 1px solid #222;
+  background: #fff;
+  overflow: hidden;
+}
+
+.plan-print-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.plan-print-marker {
+  width: 8mm;
+  height: 8mm;
+  font-size: 12px;
+}
+
+.plan-print-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1mm 4mm;
+  font-size: 7px;
+  line-height: 1.25;
+}
+
 .empty-state {
   color: var(--muted);
   font-size: 13px;
@@ -822,7 +970,7 @@ button.primary {
 
   .mode-tab {
     min-height: 35px;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   h1 {
@@ -943,6 +1091,28 @@ button.primary {
 
   .correction-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-tools {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .symbol-chip {
+    min-height: 38px;
+    font-size: 17px;
+  }
+
+  .plan-board {
+    min-height: 230px;
+  }
+
+  .plan-marker {
+    width: 32px;
+    height: 32px;
+  }
+
+  .symbol-legend {
+    grid-template-columns: 1fr;
   }
 
   .dialog-bar {

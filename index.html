@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/icon-192.png?v=18">
     <link rel="apple-touch-icon" href="./icons/icon-180.png?v=18">
-    <link rel="stylesheet" href="./styles.css?v=20">
+    <link rel="stylesheet" href="./styles.css?v=21">
   </head>
   <body>
     <main class="app-shell">
@@ -50,6 +50,7 @@
 
         <nav class="mode-nav" aria-label="作成ページ">
           <button class="mode-tab is-active" type="button" data-page-tab="report">報告書</button>
+          <button class="mode-tab" type="button" data-page-tab="plan">間取図</button>
           <button class="mode-tab" type="button" data-page-tab="completion">完工写真</button>
           <button class="mode-tab" type="button" data-page-tab="correction">是正箇所</button>
           <button class="mode-tab" type="button" data-page-tab="output">出力</button>
@@ -95,6 +96,64 @@
             <span>- 未確認</span>
           </div>
           <div id="inspectionChecks" class="inspection-list"></div>
+          </section>
+        </div>
+
+        <div class="page-panel" data-page-panel="plan" hidden>
+          <section class="panel page-intro">
+            <div>
+              <p class="eyebrow">間取図面作成</p>
+              <h2>図面に記号を配置</h2>
+            </div>
+            <button type="button" data-output-only="plan">間取図だけ出力</button>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>間取図面</h2>
+              <span>記号配置</span>
+            </div>
+
+            <label class="upload-box">
+              <input id="floorPlanImage" type="file" accept="image/*">
+              <strong>間取図面を追加</strong>
+              <span>図面画像を選び、下の記号を配置できます</span>
+            </label>
+
+            <div class="plan-tools" aria-label="記号選択">
+              <button class="symbol-chip is-active" type="button" data-symbol="1" draggable="true">1</button>
+              <button class="symbol-chip" type="button" data-symbol="2" draggable="true">2</button>
+              <button class="symbol-chip" type="button" data-symbol="3" draggable="true">3</button>
+              <button class="symbol-chip" type="button" data-symbol="4" draggable="true">4</button>
+              <button class="symbol-chip" type="button" data-symbol="5" draggable="true">5</button>
+              <button class="symbol-chip" type="button" data-symbol="6" draggable="true">6</button>
+              <button class="symbol-chip" type="button" data-symbol="7" draggable="true">7</button>
+              <button class="symbol-chip" type="button" data-symbol="8" draggable="true">8</button>
+              <button class="symbol-chip" type="button" data-symbol="●" draggable="true">●</button>
+              <button class="symbol-chip" type="button" data-symbol="○" draggable="true">○</button>
+            </div>
+
+            <div class="plan-actions">
+              <button type="button" id="undoPlanMarker">最後の記号を削除</button>
+              <button type="button" id="clearPlanMarkers">記号を全削除</button>
+            </div>
+
+            <div id="floorPlanBoard" class="plan-board">
+              <p class="empty-state">間取図面を追加すると、ここに配置画面が表示されます。</p>
+            </div>
+
+            <div class="symbol-legend">
+              <span>1 建具（窓・扉）</span>
+              <span>2 建具（網戸・雨戸）</span>
+              <span>3 クレセント / 取手</span>
+              <span>4 電気</span>
+              <span>5 水漏れ</span>
+              <span>6 木部腐食</span>
+              <span>7 シロアリ跡</span>
+              <span>8 外壁不具合</span>
+              <span>● 雨漏れ跡</span>
+              <span>○ 床鳴り</span>
+            </div>
           </section>
         </div>
 
@@ -167,6 +226,13 @@
               </span>
             </label>
             <label>
+              <input type="checkbox" name="output_plan" value="plan" checked>
+              <span>
+                <strong>間取図面</strong>
+                <small>図面画像・配置記号</small>
+              </span>
+            </label>
+            <label>
               <input type="checkbox" name="output_correction" value="correction" checked>
               <span>
                 <strong>是正箇所</strong>
@@ -204,6 +270,6 @@
 
     <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
-    <script src="./app.js?v=20"></script>
+    <script src="./app.js?v=21"></script>
   </body>
 </html>

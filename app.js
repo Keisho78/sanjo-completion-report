@@ -48,11 +48,14 @@ const inspectionItems = [
 
 const state = {
   completionPhotos: [],
-  correctionPhotos: []
+  correctionPhotos: [],
+  floorPlan: null,
+  planMarkers: []
 };
 
 const DEFAULT_DOCUMENT_TITLE = document.title;
 const PHOTO_STATUS_BATCH_SIZE = 50;
+const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
 
 const form = document.querySelector("#reportForm");
 const saveStatus = document.querySelector("#saveStatus");
@@ -60,18 +63,23 @@ const commonChecks = document.querySelector("#commonChecks");
 const inspectionChecks = document.querySelector("#inspectionChecks");
 const completionInput = document.querySelector("#completionPhotos");
 const correctionInput = document.querySelector("#correctionPhotos");
+const floorPlanInput = document.querySelector("#floorPlanImage");
 const completionPreview = document.querySelector("#completionPreview");
 const correctionList = document.querySelector("#correctionList");
+const floorPlanBoard = document.querySelector("#floorPlanBoard");
 const previewDialog = document.querySelector("#previewDialog");
 const reportPreview = document.querySelector("#reportPreview");
 const printRoot = document.querySelector("#printRoot");
 const pageTabs = document.querySelectorAll("[data-page-tab]");
 const pagePanels = document.querySelectorAll("[data-page-panel]");
 const outputInputs = document.querySelectorAll("[name^='output_']");
+const symbolChips = document.querySelectorAll("[data-symbol]");
+let selectedPlanSymbol = PLAN_SYMBOLS[0];
+let draggedMarkerId = null;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=20").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=21").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -178,6 +186,7 @@ function readPhotoFile(file) {
 function setPhotoInputsDisabled(disabled) {
   completionInput.disabled = disabled;
   correctionInput.disabled = disabled;
+  floorPlanInput.disabled = disabled;
 }
 
 function renderCompletionPhotos() {
@@ -206,6 +215,26 @@ function renderCorrectionPhotos() {
     : `<p class="empty-state">是正写真はまだ追加されていません。</p>`;
 }
 
+function renderFloorPlan() {
+  if (!state.floorPlan?.src) {
+    floorPlanBoard.innerHTML = `<p class="empty-state">間取図面を追加すると、ここに配置画面が表示されます。</p>`;
+    return;
+  }
+
+  floorPlanBoard.innerHTML = `
+    <img class="plan-image" src="${state.floorPlan.src}" alt="${escapeHtml(state.floorPlan.name)}">
+    ${state.planMarkers.map((marker) => `
+      <button
+        class="plan-marker"
+        type="button"
+        data-marker-id="${marker.id}"
+        style="left: ${marker.x}%; top: ${marker.y}%"
+        aria-label="記号 ${escapeHtml(marker.symbol)}"
+      >${escapeHtml(marker.symbol)}</button>
+    `).join("")}
+  `;
+}
+
 function getFormData() {
   const data = Object.fromEntries(new FormData(form).entries());
   data.common = commonItems.map((item, index) => ({
@@ -221,6 +250,8 @@ function getFormData() {
   }));
   data.completionPhotos = state.completionPhotos;
   data.correctionPhotos = state.correctionPhotos;
+  data.floorPlan = state.floorPlan;
+  data.planMarkers = state.planMarkers;
   return data;
 }
 
@@ -245,7 +276,9 @@ function getDraftDataForStorage() {
       id,
       name,
       comment
-    }))
+    })),
+    floorPlan: data.floorPlan ? { id: data.floorPlan.id, name: data.floorPlan.name } : null,
+    planMarkers: data.planMarkers
   };
 }
 
@@ -279,21 +312,26 @@ function loadDraft() {
 
   state.completionPhotos = (data.completionPhotos || []).filter((photo) => photo.src);
   state.correctionPhotos = (data.correctionPhotos || []).filter((photo) => photo.src);
+  state.planMarkers = Array.isArray(data.planMarkers) ? data.planMarkers : [];
 }
 
 function buildPreview() {
   const data = getFormData();
   const selectedOutputs = getSelectedOutputs();
   if (!selectedOutputs.length) {
+    reportPreview.innerHTML = "";
+    printRoot.innerHTML = "";
     saveStatus.textContent = "出力ページを選択";
     return false;
   }
 
   const includeReport = selectedOutputs.includes("report");
+  const includePlan = selectedOutputs.includes("plan");
   const includeCompletion = selectedOutputs.includes("completion");
   const includeCorrection = selectedOutputs.includes("correction");
   const completionPages = includeCompletion ? photoPages(data.completionPhotos) : [];
   const correctionPages = includeCorrection ? photoPages(data.correctionPhotos) : [];
+  const planPage = includePlan && data.floorPlan?.src ? renderPlanPrintPage(data) : "";
 
   const html = `
     ${includeReport ? `
@@ -368,6 +406,7 @@ function buildPreview() {
       </div>
     </section>
     ` : ""}
+    ${planPage}
     ${correctionPages.map((photos, pageIndex) => `
       <section class="print-page correction-page">
         <h2>是正箇所${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}</h2>
@@ -399,11 +438,44 @@ function buildPreview() {
 
   reportPreview.innerHTML = html;
   printRoot.innerHTML = html;
+  if (!html.trim()) {
+    saveStatus.textContent = "出力内容なし";
+    return false;
+  }
   return true;
 }
 
 function photoPages(photos) {
-  return photos.length ? chunk(photos, 9) : [[]];
+  return photos.length ? chunk(photos, 9) : [];
+}
+
+function renderPlanPrintPage(data) {
+  return `
+    <section class="print-page plan-page">
+      <h2>間取図面</h2>
+      <div class="plan-print-meta">
+        <strong>物件名</strong><span>${escapeHtml(data.propertyName || "")}</span>
+      </div>
+      <div class="plan-print-frame">
+        <img src="${data.floorPlan.src}" alt="">
+        ${data.planMarkers.map((marker) => `
+          <span class="plan-print-marker" style="left: ${marker.x}%; top: ${marker.y}%">${escapeHtml(marker.symbol)}</span>
+        `).join("")}
+      </div>
+      <div class="plan-print-legend">
+        <span>1 建具（窓・扉）不具合</span>
+        <span>2 建具（網戸・雨戸）不具合</span>
+        <span>3 クレセント / 取手不具合</span>
+        <span>4 電気不具合</span>
+        <span>5 水漏れ</span>
+        <span>6 木部腐食</span>
+        <span>7 シロアリ跡あり</span>
+        <span>8 外壁不具合</span>
+        <span>● 雨漏れ跡</span>
+        <span>○ 床鳴り</span>
+      </div>
+    </section>
+  `;
 }
 
 function renderNinePhotoSlots(photos, pageIndex, renderPhoto) {
@@ -478,6 +550,77 @@ function previewOnly(outputType) {
   previewSelectedOutputs();
 }
 
+function selectPlanSymbol(symbol) {
+  selectedPlanSymbol = PLAN_SYMBOLS.includes(symbol) ? symbol : PLAN_SYMBOLS[0];
+  symbolChips.forEach((chip) => {
+    chip.classList.toggle("is-active", chip.dataset.symbol === selectedPlanSymbol);
+  });
+}
+
+function addPlanMarker(symbol, clientX, clientY) {
+  if (!state.floorPlan?.src) {
+    saveStatus.textContent = "図面を追加";
+    return;
+  }
+
+  const position = getPlanPosition(clientX, clientY);
+  if (!position) return;
+
+  state.planMarkers.push({
+    id: createId(),
+    symbol,
+    ...position
+  });
+  renderFloorPlan();
+  saveDraft();
+}
+
+function movePlanMarker(id, clientX, clientY, shouldSave = true) {
+  const marker = state.planMarkers.find((item) => item.id === id);
+  const position = getPlanPosition(clientX, clientY);
+  if (!marker || !position) return;
+
+  marker.x = position.x;
+  marker.y = position.y;
+  const markerElement = floorPlanBoard.querySelector(`[data-marker-id="${id}"]`);
+  if (markerElement) {
+    markerElement.style.left = `${marker.x}%`;
+    markerElement.style.top = `${marker.y}%`;
+  } else {
+    renderFloorPlan();
+  }
+  if (shouldSave) saveDraft();
+}
+
+function getPlanPosition(clientX, clientY) {
+  const image = floorPlanBoard.querySelector(".plan-image");
+  if (!image) return null;
+
+  const rect = image.getBoundingClientRect();
+  const x = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
+  const y = clamp(((clientY - rect.top) / rect.height) * 100, 0, 100);
+  return {
+    x: Number(x.toFixed(2)),
+    y: Number(y.toFixed(2))
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function clearPlanMarkers() {
+  state.planMarkers = [];
+  renderFloorPlan();
+  saveDraft();
+}
+
+function undoPlanMarker() {
+  state.planMarkers.pop();
+  renderFloorPlan();
+  saveDraft();
+}
+
 function createId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -544,6 +687,7 @@ renderChecks();
 loadDraft();
 renderCompletionPhotos();
 renderCorrectionPhotos();
+renderFloorPlan();
 
 form.addEventListener("input", saveDraft);
 form.addEventListener("change", saveDraft);
@@ -561,6 +705,18 @@ correctionInput.addEventListener("change", async (event) => {
     ...photo,
     comment: ""
   }));
+});
+
+floorPlanInput.addEventListener("change", (event) => {
+  const file = [...event.target.files].find((item) => item.type.startsWith("image/"));
+  event.target.value = "";
+  if (!file) return;
+
+  revokePhotoUrl(state.floorPlan);
+  state.floorPlan = readPhotoFile(file);
+  state.planMarkers = [];
+  renderFloorPlan();
+  saveDraft();
 });
 
 completionPreview.addEventListener("click", (event) => {
@@ -633,12 +789,16 @@ document.querySelector("#resetButton").addEventListener("click", () => {
   form.reset();
   state.completionPhotos.forEach(revokePhotoUrl);
   state.correctionPhotos.forEach(revokePhotoUrl);
+  revokePhotoUrl(state.floorPlan);
   state.completionPhotos = [];
   state.correctionPhotos = [];
+  state.floorPlan = null;
+  state.planMarkers = [];
   renderChecks();
   renderCompletionPhotos();
   renderCorrectionPhotos();
-  setOutputSelection(["report", "correction", "completion"]);
+  renderFloorPlan();
+  setOutputSelection(["report", "plan", "correction", "completion"]);
   showPage("report");
   saveStatus.textContent = "未保存";
 });
@@ -650,3 +810,65 @@ pageTabs.forEach((tab) => {
 document.querySelectorAll("[data-output-only]").forEach((button) => {
   button.addEventListener("click", () => previewOnly(button.dataset.outputOnly));
 });
+
+symbolChips.forEach((chip) => {
+  chip.addEventListener("click", () => selectPlanSymbol(chip.dataset.symbol));
+  chip.addEventListener("dragstart", (event) => {
+    selectPlanSymbol(chip.dataset.symbol);
+    event.dataTransfer.setData("text/plain", chip.dataset.symbol);
+  });
+});
+
+floorPlanBoard.addEventListener("dragstart", (event) => {
+  const marker = event.target.closest("[data-marker-id]");
+  if (!marker) return;
+  draggedMarkerId = marker.dataset.markerId;
+  event.dataTransfer.setData("text/plain", marker.textContent.trim());
+});
+
+floorPlanBoard.addEventListener("dragover", (event) => {
+  if (!state.floorPlan?.src) return;
+  event.preventDefault();
+});
+
+floorPlanBoard.addEventListener("drop", (event) => {
+  event.preventDefault();
+  const symbol = event.dataTransfer.getData("text/plain") || selectedPlanSymbol;
+  if (draggedMarkerId) {
+    movePlanMarker(draggedMarkerId, event.clientX, event.clientY);
+    draggedMarkerId = null;
+    return;
+  }
+  addPlanMarker(symbol, event.clientX, event.clientY);
+});
+
+floorPlanBoard.addEventListener("click", (event) => {
+  if (event.target.closest("[data-marker-id]")) return;
+  addPlanMarker(selectedPlanSymbol, event.clientX, event.clientY);
+});
+
+floorPlanBoard.addEventListener("pointerdown", (event) => {
+  const marker = event.target.closest("[data-marker-id]");
+  if (!marker) return;
+  event.preventDefault();
+  marker.setPointerCapture(event.pointerId);
+  draggedMarkerId = marker.dataset.markerId;
+});
+
+floorPlanBoard.addEventListener("pointermove", (event) => {
+  if (!draggedMarkerId || event.buttons !== 1) return;
+  movePlanMarker(draggedMarkerId, event.clientX, event.clientY, false);
+});
+
+floorPlanBoard.addEventListener("pointerup", () => {
+  if (draggedMarkerId) saveDraft();
+  draggedMarkerId = null;
+});
+
+window.addEventListener("pointerup", () => {
+  if (draggedMarkerId) saveDraft();
+  draggedMarkerId = null;
+});
+
+document.querySelector("#undoPlanMarker").addEventListener("click", undoPlanMarker);
+document.querySelector("#clearPlanMarkers").addEventListener("click", clearPlanMarkers);
