@@ -67,7 +67,7 @@ const printRoot = document.querySelector("#printRoot");
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=17").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=18").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });

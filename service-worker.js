@@ -1,14 +1,14 @@
-const CACHE_NAME = "sanjo-completion-report-v17";
+const CACHE_NAME = "sanjo-completion-report-v18";
 const APP_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=17",
-  "./app.js?v=17",
+  "./styles.css?v=18",
+  "./app.js?v=18",
   "./manifest.webmanifest",
-  "./icons/icon-180.png",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/maskable-512.png"
+  "./icons/icon-180.png?v=18",
+  "./icons/icon-192.png?v=18",
+  "./icons/icon-512.png?v=18",
+  "./icons/maskable-512.png?v=18"
 ];
 
 self.addEventListener("install", (event) => {
