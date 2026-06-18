@@ -100,7 +100,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=29").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=30").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -529,6 +529,22 @@ function resetCurrentForm() {
   outputInputs.forEach((input) => {
     input.checked = true;
   });
+}
+
+function handleDraftSelectChange(event) {
+  event.stopPropagation();
+  const nextDraftId = event.target.value;
+  if (!nextDraftId || nextDraftId === activeDraftId) return;
+
+  saveDraft();
+  activeDraftId = nextDraftId;
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  const record = getDraftRecords().find((item) => item.id === activeDraftId);
+  if (record) {
+    applyDraftData(record.data);
+    renderDraftList();
+    saveStatus.textContent = "下書き切替";
+  }
 }
 
 function buildPreview() {
@@ -1267,17 +1283,8 @@ window.addEventListener("afterprint", () => {
 
 document.querySelector("#exportJsonButton").addEventListener("click", exportJson);
 
-draftSelect.addEventListener("change", () => {
-  if (!draftSelect.value || draftSelect.value === activeDraftId) return;
-  activeDraftId = draftSelect.value;
-  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-  const record = getDraftRecords().find((item) => item.id === activeDraftId);
-  if (record) {
-    applyDraftData(record.data);
-    renderDraftList();
-    saveStatus.textContent = "下書き切替";
-  }
-});
+draftSelect.addEventListener("input", handleDraftSelectChange);
+draftSelect.addEventListener("change", handleDraftSelectChange);
 
 newDraftButton.addEventListener("click", () => {
   saveDraft();
