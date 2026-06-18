@@ -88,7 +88,7 @@ let lastPlanPointerStart = 0;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=22").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=23").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });

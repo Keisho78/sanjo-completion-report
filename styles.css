@@ -512,14 +512,15 @@ textarea {
 .plan-marker {
   transform: translate(-50%, -50%);
   transform-origin: center;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   min-height: 0;
   padding: 0;
-  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.2);
+  border-width: 1.5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   cursor: grab;
   z-index: 2;
-  font-size: 12px;
+  font-size: 9px;
   touch-action: none;
 }
 
@@ -948,9 +949,10 @@ button.primary {
 }
 
 .plan-print-marker {
-  width: 5mm;
-  height: 5mm;
-  font-size: 8px;
+  width: 4mm;
+  height: 4mm;
+  border-width: 1px;
+  font-size: 6.5px;
 }
 
 .plan-print-legend {
@@ -1133,9 +1135,9 @@ button.primary {
   }
 
   .plan-marker {
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
   }
 
   .symbol-legend {
