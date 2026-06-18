@@ -51,6 +51,7 @@ const state = {
   correctionPhotos: []
 };
 
+const DEFAULT_DOCUMENT_TITLE = document.title;
 const PHOTO_STATUS_BATCH_SIZE = 50;
 
 const form = document.querySelector("#reportForm");
@@ -67,7 +68,7 @@ const printRoot = document.querySelector("#printRoot");
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=18").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=19").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -391,7 +392,7 @@ function exportJson() {
   const blob = new Blob([data], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `完工報告書_${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `${getOutputFileName()}.json`;
   link.click();
   URL.revokeObjectURL(link.href);
 }
@@ -431,6 +432,28 @@ function nextFrame() {
 
 function revokePhotoUrl(photo) {
   if (photo?.src?.startsWith("blob:")) URL.revokeObjectURL(photo.src);
+}
+
+function getOutputFileName() {
+  const data = getFormData();
+  const name = String(data.propertyName || "").trim();
+  return sanitizeFileName(name) || "完工報告書";
+}
+
+function sanitizeFileName(value) {
+  return value
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 80)
+    .trim();
+}
+
+function setPrintDocumentTitle() {
+  document.title = getOutputFileName();
+}
+
+function restoreDocumentTitle() {
+  document.title = DEFAULT_DOCUMENT_TITLE;
 }
 
 function statusLabel(value) {
@@ -528,6 +551,7 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
 
 document.querySelector("#printButton").addEventListener("click", () => {
   buildPreview();
+  setPrintDocumentTitle();
   document.body.classList.add("is-printing");
   requestAnimationFrame(() => {
     setTimeout(() => window.print(), 120);
@@ -536,11 +560,13 @@ document.querySelector("#printButton").addEventListener("click", () => {
 
 window.addEventListener("beforeprint", () => {
   buildPreview();
+  setPrintDocumentTitle();
   document.body.classList.add("is-printing");
 });
 
 window.addEventListener("afterprint", () => {
   document.body.classList.remove("is-printing");
+  restoreDocumentTitle();
 });
 
 document.querySelector("#exportJsonButton").addEventListener("click", exportJson);
