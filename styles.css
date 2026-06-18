@@ -915,7 +915,8 @@ button.primary {
   height: 210mm;
   place-items: center;
   padding: 4mm;
-  gap: 0;
+  grid-template-rows: 1fr auto;
+  gap: 2mm;
 }
 
 .plan-page h2 {
@@ -975,9 +976,13 @@ button.primary {
 
 .plan-print-legend {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1mm 4mm;
-  font-size: 7px;
+  width: 100%;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8mm 2.5mm;
+  padding: 1.5mm 2mm;
+  border: 1px solid #222;
+  background: #fff;
+  font-size: 6.2px;
   line-height: 1.25;
 }
 

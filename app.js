@@ -88,7 +88,7 @@ let lastPlanPointerStart = 0;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=24").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=25").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -519,13 +519,25 @@ function renderPlanPrintPage(data) {
           <span class="plan-print-marker" style="left: ${marker.x}%; top: ${marker.y}%">${escapeHtml(marker.symbol)}</span>
         `).join("")}
       </div>
+      <div class="plan-print-legend">
+        <span>1 建具（窓・扉）不具合</span>
+        <span>2 建具（網戸・雨戸）不具合</span>
+        <span>3 クレセント / 取手不具合</span>
+        <span>4 電気不具合</span>
+        <span>5 水漏れ</span>
+        <span>6 木部腐食</span>
+        <span>7 シロアリ跡あり</span>
+        <span>8 外壁不具合</span>
+        <span>● 雨漏れ跡</span>
+        <span>○ 床鳴り</span>
+      </div>
     </section>
   `;
 }
 
 function getPlanPrintFrameStyle(plan) {
   const maxWidth = 289;
-  const maxHeight = 202;
+  const maxHeight = 187;
   const width = plan?.width || 297;
   const height = plan?.height || 210;
   const aspect = width / height;
