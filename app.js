@@ -88,7 +88,7 @@ let lastPlanPointerStart = 0;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=25").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=26").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -536,8 +536,8 @@ function renderPlanPrintPage(data) {
 }
 
 function getPlanPrintFrameStyle(plan) {
-  const maxWidth = 289;
-  const maxHeight = 187;
+  const maxWidth = 293;
+  const maxHeight = 206;
   const width = plan?.width || 297;
   const height = plan?.height || 210;
   const aspect = width / height;

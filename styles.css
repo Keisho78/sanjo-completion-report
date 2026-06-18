@@ -914,9 +914,8 @@ button.primary {
   min-height: 210mm;
   height: 210mm;
   place-items: center;
-  padding: 4mm;
-  grid-template-rows: 1fr auto;
-  gap: 2mm;
+  padding: 2mm;
+  gap: 0;
 }
 
 .plan-page h2 {
@@ -968,21 +967,24 @@ button.primary {
 }
 
 .plan-print-marker {
-  width: 4mm;
-  height: 4mm;
-  border-width: 1px;
-  font-size: 6.5px;
+  width: 16px;
+  height: 16px;
+  border-width: 1.5px;
+  font-size: 9px;
 }
 
 .plan-print-legend {
+  position: absolute;
+  right: 6mm;
+  bottom: 3mm;
+  left: 6mm;
   display: grid;
-  width: 100%;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.8mm 2.5mm;
-  padding: 1.5mm 2mm;
+  gap: 0.6mm 2mm;
+  padding: 1mm 1.5mm;
   border: 1px solid #222;
-  background: #fff;
-  font-size: 6.2px;
+  background: rgba(255, 255, 255, 0.94);
+  font-size: 5.8px;
   line-height: 1.25;
 }
 
@@ -1252,7 +1254,7 @@ button.primary {
     width: 297mm;
     min-height: 210mm;
     height: 210mm;
-    padding: 4mm;
+    padding: 2mm;
   }
 
   .print-page:last-child {
