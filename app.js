@@ -61,6 +61,9 @@ const state = {
 const DEFAULT_DOCUMENT_TITLE = document.title;
 const PHOTO_STATUS_BATCH_SIZE = 50;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
+const LEGACY_DRAFT_STORAGE_KEY = "sanjo_completion_report_draft";
+const DRAFTS_STORAGE_KEY = "sanjo_completion_report_drafts_v2";
+const ACTIVE_DRAFT_STORAGE_KEY = "sanjo_completion_report_active_draft";
 
 const form = document.querySelector("#reportForm");
 const saveStatus = document.querySelector("#saveStatus");
@@ -76,6 +79,10 @@ const previewDialog = document.querySelector("#previewDialog");
 const reportPreview = document.querySelector("#reportPreview");
 const printRoot = document.querySelector("#printRoot");
 const printPageStyle = document.createElement("style");
+const draftSelect = document.querySelector("#draftSelect");
+const newDraftButton = document.querySelector("#newDraftButton");
+const deleteDraftButton = document.querySelector("#deleteDraftButton");
+const draftNote = document.querySelector("#draftNote");
 const pageTabs = document.querySelectorAll("[data-page-tab]");
 const pagePanels = document.querySelectorAll("[data-page-panel]");
 const outputInputs = document.querySelectorAll("[name^='output_']");
@@ -86,12 +93,14 @@ let isPanningPlan = false;
 let planPanStart = null;
 let planPointerMoved = false;
 let lastPlanPointerStart = 0;
+let activeDraftId = localStorage.getItem(ACTIVE_DRAFT_STORAGE_KEY) || "";
+let isApplyingDraft = false;
 
 document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=28").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=29").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -305,8 +314,31 @@ function getFormData() {
 }
 
 function saveDraft() {
+  if (isApplyingDraft) return;
   try {
-    localStorage.setItem("sanjo_completion_report_draft", JSON.stringify(getDraftDataForStorage()));
+    const records = getDraftRecords();
+    const now = new Date().toISOString();
+    if (!activeDraftId || !records.some((record) => record.id === activeDraftId)) {
+      activeDraftId = createId();
+      localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+    }
+
+    const data = getDraftDataForStorage();
+    const existingIndex = records.findIndex((record) => record.id === activeDraftId);
+    const record = {
+      id: activeDraftId,
+      updatedAt: now,
+      data
+    };
+
+    if (existingIndex >= 0) {
+      records[existingIndex] = record;
+    } else {
+      records.push(record);
+    }
+
+    saveDraftRecords(records);
+    renderDraftList(records);
     saveStatus.textContent = "保存済み";
     setTimeout(() => {
       saveStatus.textContent = "自動保存";
@@ -333,20 +365,54 @@ function getDraftDataForStorage() {
       height: data.floorPlan.height
     } : null,
     planMarkers: data.planMarkers,
-    planView: data.planView
+    planView: data.planView,
+    selectedOutputs: getSelectedOutputs()
   };
 }
 
 function loadDraft() {
+  migrateLegacyDraft();
+  const records = getDraftRecords();
+  if (!records.length) {
+    activeDraftId = createId();
+    localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+    renderDraftList(records);
+    return;
+  }
+
+  const activeRecord = records.find((record) => record.id === activeDraftId) || sortDraftRecords(records)[0];
+  activeDraftId = activeRecord.id;
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  applyDraftData(activeRecord.data);
+  renderDraftList(records);
+}
+
+function migrateLegacyDraft() {
+  if (getDraftRecords().length) return;
+
   let data;
   try {
-    const raw = localStorage.getItem("sanjo_completion_report_draft");
+    const raw = localStorage.getItem(LEGACY_DRAFT_STORAGE_KEY);
     if (!raw) return;
     data = JSON.parse(raw);
   } catch (error) {
-    localStorage.removeItem("sanjo_completion_report_draft");
+    localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
     return;
   }
+
+  activeDraftId = createId();
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  saveDraftRecords([{
+    id: activeDraftId,
+    updatedAt: new Date().toISOString(),
+    data
+  }]);
+  localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
+}
+
+function applyDraftData(data = {}) {
+  isApplyingDraft = true;
+  resetCurrentForm();
 
   Object.entries(data).forEach(([key, value]) => {
     const field = form.elements[key];
@@ -375,6 +441,94 @@ function loadDraft() {
       panY: data.planView.panY || 0
     };
   }
+
+  const outputs = Array.isArray(data.selectedOutputs)
+    ? data.selectedOutputs
+    : ["report", "plan", "correction", "completion"].filter((output) => data[`output_${output}`]);
+  if (outputs.length) {
+    outputInputs.forEach((input) => {
+      input.checked = outputs.includes(input.value);
+    });
+  }
+
+  renderCompletionPhotos();
+  renderCorrectionPhotos();
+  renderFloorPlan();
+  isApplyingDraft = false;
+}
+
+function getDraftRecords() {
+  try {
+    const records = JSON.parse(localStorage.getItem(DRAFTS_STORAGE_KEY) || "[]");
+    return Array.isArray(records) ? records.filter((record) => record?.id && record?.data) : [];
+  } catch (error) {
+    localStorage.removeItem(DRAFTS_STORAGE_KEY);
+    return [];
+  }
+}
+
+function saveDraftRecords(records) {
+  localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(sortDraftRecords(records)));
+}
+
+function sortDraftRecords(records) {
+  return [...records].sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+}
+
+function renderDraftList(records = getDraftRecords()) {
+  const sorted = sortDraftRecords(records);
+  draftSelect.innerHTML = sorted.length
+    ? sorted.map((record) => `
+      <option value="${record.id}" ${record.id === activeDraftId ? "selected" : ""}>
+        ${escapeHtml(getDraftTitle(record))}
+      </option>
+    `).join("")
+    : `<option value="">新規下書き</option>`;
+  draftSelect.disabled = !sorted.length;
+  deleteDraftButton.disabled = !sorted.length;
+  draftNote.textContent = sorted.length
+    ? `${sorted.length}件の下書きを保存中`
+    : "物件名ごとに自動保存されます。";
+}
+
+function getDraftTitle(record) {
+  const name = String(record.data?.propertyName || "").trim() || "無題の物件";
+  const date = formatDraftDate(record.updatedAt);
+  return date ? `${name}（${date}）` : name;
+}
+
+function formatDraftDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${month}/${day} ${hour}:${minute}`;
+}
+
+function resetCurrentForm() {
+  form.reset();
+  state.completionPhotos.forEach(revokePhotoUrl);
+  state.correctionPhotos.forEach(revokePhotoUrl);
+  revokePhotoUrl(state.floorPlan);
+  state.completionPhotos = [];
+  state.correctionPhotos = [];
+  state.floorPlan = null;
+  state.planMarkers = [];
+  state.planView = {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
+  renderChecks();
+  renderCompletionPhotos();
+  renderCorrectionPhotos();
+  renderFloorPlan();
+  outputInputs.forEach((input) => {
+    input.checked = true;
+  });
 }
 
 function buildPreview() {
@@ -1113,29 +1267,60 @@ window.addEventListener("afterprint", () => {
 
 document.querySelector("#exportJsonButton").addEventListener("click", exportJson);
 
+draftSelect.addEventListener("change", () => {
+  if (!draftSelect.value || draftSelect.value === activeDraftId) return;
+  activeDraftId = draftSelect.value;
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  const record = getDraftRecords().find((item) => item.id === activeDraftId);
+  if (record) {
+    applyDraftData(record.data);
+    renderDraftList();
+    saveStatus.textContent = "下書き切替";
+  }
+});
+
+newDraftButton.addEventListener("click", () => {
+  saveDraft();
+  activeDraftId = createId();
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  resetCurrentForm();
+  saveDraft();
+  renderDraftList();
+  form.elements.propertyName?.focus();
+  saveStatus.textContent = "新規下書き";
+});
+
+deleteDraftButton.addEventListener("click", () => {
+  const records = getDraftRecords();
+  const activeRecord = records.find((record) => record.id === activeDraftId);
+  if (!activeRecord) return;
+  const title = String(activeRecord.data?.propertyName || "").trim() || "無題の物件";
+  if (!confirm(`「${title}」の下書きを削除しますか？`)) return;
+
+  const remaining = records.filter((record) => record.id !== activeDraftId);
+  saveDraftRecords(remaining);
+  if (remaining.length) {
+    activeDraftId = sortDraftRecords(remaining)[0].id;
+    localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+    applyDraftData(remaining.find((record) => record.id === activeDraftId)?.data);
+    saveStatus.textContent = "下書き削除";
+  } else {
+    activeDraftId = createId();
+    localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+    resetCurrentForm();
+    saveStatus.textContent = "下書き削除";
+  }
+  renderDraftList();
+});
+
 document.querySelector("#resetButton").addEventListener("click", () => {
   if (!confirm("入力内容をリセットしますか？")) return;
-  localStorage.removeItem("sanjo_completion_report_draft");
-  form.reset();
-  state.completionPhotos.forEach(revokePhotoUrl);
-  state.correctionPhotos.forEach(revokePhotoUrl);
-  revokePhotoUrl(state.floorPlan);
-  state.completionPhotos = [];
-  state.correctionPhotos = [];
-  state.floorPlan = null;
-  state.planMarkers = [];
-  state.planView = {
-    zoom: 1,
-    panX: 0,
-    panY: 0
-  };
-  renderChecks();
-  renderCompletionPhotos();
-  renderCorrectionPhotos();
-  renderFloorPlan();
-  setOutputSelection(["report", "plan", "correction", "completion"]);
+  activeDraftId = createId();
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  resetCurrentForm();
+  saveDraft();
   showPage("report");
-  saveStatus.textContent = "未保存";
+  saveStatus.textContent = "新規下書き";
 });
 
 pageTabs.forEach((tab) => {

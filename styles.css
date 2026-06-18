@@ -56,6 +56,31 @@ textarea {
   backdrop-filter: blur(12px);
 }
 
+.draft-manager {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.draft-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.draft-actions button {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+.draft-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .eyebrow {
   margin: 0 0 2px;
   color: var(--accent);

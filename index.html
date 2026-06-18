@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/icon-192.png?v=18">
     <link rel="apple-touch-icon" href="./icons/icon-180.png?v=18">
-    <link rel="stylesheet" href="./styles.css?v=28">
+    <link rel="stylesheet" href="./styles.css?v=29">
   </head>
   <body>
     <main class="app-shell">
@@ -45,6 +45,18 @@
               <span>確認日</span>
               <input name="inspectionDate" type="date">
             </label>
+          </div>
+
+          <div class="draft-manager" aria-label="下書き管理">
+            <label class="field">
+              <span>下書き</span>
+              <select id="draftSelect"></select>
+            </label>
+            <div class="draft-actions">
+              <button type="button" id="newDraftButton">新規下書き</button>
+              <button type="button" id="deleteDraftButton">この下書きを削除</button>
+            </div>
+            <p class="draft-note" id="draftNote">物件名ごとに自動保存されます。</p>
           </div>
         </section>
 
@@ -273,6 +285,6 @@
 
     <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
-    <script src="./app.js?v=28"></script>
+    <script src="./app.js?v=29"></script>
   </body>
 </html>
