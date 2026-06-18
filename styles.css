@@ -908,9 +908,26 @@ button.primary {
 }
 
 .plan-page {
-  display: flex;
-  flex-direction: column;
-  gap: 4mm;
+  position: relative;
+  display: grid;
+  width: 297mm;
+  min-height: 210mm;
+  height: 210mm;
+  place-items: center;
+  padding: 4mm;
+  gap: 0;
+}
+
+.plan-page h2 {
+  position: absolute;
+  top: 2mm;
+  left: 4mm;
+  z-index: 1;
+  margin: 0;
+  padding: 1mm 2mm;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 8px;
+  line-height: 1.2;
 }
 
 .plan-print-meta {
@@ -932,19 +949,20 @@ button.primary {
 
 .plan-print-frame {
   position: relative;
-  display: grid;
-  flex: 1 1 auto;
+  display: block;
+  flex: none;
   min-height: 0;
-  place-items: center;
   border: 1px solid #222;
   background: #fff;
   overflow: hidden;
 }
 
 .plan-print-frame img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   display: block;
 }
 
@@ -1190,6 +1208,11 @@ button.primary {
     margin: 0;
   }
 
+  @page plan-landscape {
+    size: A4 landscape;
+    margin: 0;
+  }
+
   body {
     background: #fff;
   }
@@ -1204,7 +1227,7 @@ button.primary {
 
   .print-root {
     display: block;
-    width: 210mm;
+    width: auto;
     margin: 0;
     padding: 0;
     background: #fff;
@@ -1217,6 +1240,14 @@ button.primary {
     padding: 10mm;
     border: 0;
     box-shadow: none;
+  }
+
+  .plan-page {
+    page: plan-landscape;
+    width: 297mm;
+    min-height: 210mm;
+    height: 210mm;
+    padding: 4mm;
   }
 
   .print-page:last-child {

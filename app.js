@@ -88,7 +88,7 @@ let lastPlanPointerStart = 0;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=23").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=24").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -190,6 +190,30 @@ function readPhotoFile(file) {
     name: file.name,
     src: URL.createObjectURL(file)
   };
+}
+
+function readPlanFile(file) {
+  const src = URL.createObjectURL(file);
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      resolve({
+        id: createId(),
+        name: file.name,
+        src,
+        width: image.naturalWidth || image.width,
+        height: image.naturalHeight || image.height
+      });
+    };
+    image.onerror = () => {
+      resolve({
+        id: createId(),
+        name: file.name,
+        src
+      });
+    };
+    image.src = src;
+  });
 }
 
 function setPhotoInputsDisabled(disabled) {
@@ -299,7 +323,12 @@ function getDraftDataForStorage() {
       name,
       comment
     })),
-    floorPlan: data.floorPlan ? { id: data.floorPlan.id, name: data.floorPlan.name } : null,
+    floorPlan: data.floorPlan ? {
+      id: data.floorPlan.id,
+      name: data.floorPlan.name,
+      width: data.floorPlan.width,
+      height: data.floorPlan.height
+    } : null,
     planMarkers: data.planMarkers,
     planView: data.planView
   };
@@ -480,32 +509,32 @@ function photoPages(photos) {
 }
 
 function renderPlanPrintPage(data) {
+  const frameStyle = getPlanPrintFrameStyle(data.floorPlan);
   return `
     <section class="print-page plan-page">
       <h2>間取図面</h2>
-      <div class="plan-print-meta">
-        <strong>物件名</strong><span>${escapeHtml(data.propertyName || "")}</span>
-      </div>
-      <div class="plan-print-frame">
+      <div class="plan-print-frame" style="${frameStyle}">
         <img src="${data.floorPlan.src}" alt="">
         ${data.planMarkers.map((marker) => `
           <span class="plan-print-marker" style="left: ${marker.x}%; top: ${marker.y}%">${escapeHtml(marker.symbol)}</span>
         `).join("")}
       </div>
-      <div class="plan-print-legend">
-        <span>1 建具（窓・扉）不具合</span>
-        <span>2 建具（網戸・雨戸）不具合</span>
-        <span>3 クレセント / 取手不具合</span>
-        <span>4 電気不具合</span>
-        <span>5 水漏れ</span>
-        <span>6 木部腐食</span>
-        <span>7 シロアリ跡あり</span>
-        <span>8 外壁不具合</span>
-        <span>● 雨漏れ跡</span>
-        <span>○ 床鳴り</span>
-      </div>
     </section>
   `;
+}
+
+function getPlanPrintFrameStyle(plan) {
+  const maxWidth = 289;
+  const maxHeight = 202;
+  const width = plan?.width || 297;
+  const height = plan?.height || 210;
+  const aspect = width / height;
+  const heightFromWidth = maxWidth / aspect;
+  if (heightFromWidth <= maxHeight) {
+    return `width: ${maxWidth}mm; height: ${heightFromWidth.toFixed(2)}mm;`;
+  }
+
+  return `width: ${(maxHeight * aspect).toFixed(2)}mm; height: ${maxHeight}mm;`;
 }
 
 function renderNinePhotoSlots(photos, pageIndex, renderPhoto) {
@@ -780,13 +809,13 @@ correctionInput.addEventListener("change", async (event) => {
   }));
 });
 
-floorPlanInput.addEventListener("change", (event) => {
+floorPlanInput.addEventListener("change", async (event) => {
   const file = [...event.target.files].find((item) => item.type.startsWith("image/"));
   event.target.value = "";
   if (!file) return;
 
   revokePhotoUrl(state.floorPlan);
-  state.floorPlan = readPhotoFile(file);
+  state.floorPlan = await readPlanFile(file);
   state.planMarkers = [];
   state.planView = {
     zoom: 1,
