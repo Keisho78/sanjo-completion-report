@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/icon-192.png?v=18">
     <link rel="apple-touch-icon" href="./icons/icon-180.png?v=18">
-    <link rel="stylesheet" href="./styles.css?v=19">
+    <link rel="stylesheet" href="./styles.css?v=20">
   </head>
   <body>
     <main class="app-shell">
@@ -25,10 +25,10 @@
       </header>
 
       <form id="reportForm" class="report-form">
-        <section class="panel">
+        <section class="panel property-panel">
           <div class="section-title">
-            <h2>基本情報</h2>
-            <span>1/5</span>
+            <h2>物件情報</h2>
+            <span>共通</span>
           </div>
 
           <label class="field">
@@ -46,25 +46,47 @@
               <input name="inspectionDate" type="date">
             </label>
           </div>
+        </section>
 
+        <nav class="mode-nav" aria-label="作成ページ">
+          <button class="mode-tab is-active" type="button" data-page-tab="report">報告書</button>
+          <button class="mode-tab" type="button" data-page-tab="completion">完工写真</button>
+          <button class="mode-tab" type="button" data-page-tab="correction">是正箇所</button>
+          <button class="mode-tab" type="button" data-page-tab="output">出力</button>
+        </nav>
+
+        <div class="page-panel" data-page-panel="report">
+          <section class="panel page-intro">
+            <div>
+              <p class="eyebrow">報告書作成</p>
+              <h2>チェック表とメモを作成</h2>
+            </div>
+            <button type="button" data-output-only="report">この報告書だけ出力</button>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>全体メモ</h2>
+              <span>報告書</span>
+            </div>
           <label class="field">
             <span>全体メモ</span>
             <textarea name="generalMemo" rows="4" placeholder="例：床は張り替えていないためキズが残っています。"></textarea>
           </label>
-        </section>
+          </section>
 
-        <section class="panel">
+          <section class="panel">
           <div class="section-title">
             <h2>全物件共通</h2>
-            <span>2/5</span>
+            <span>チェック</span>
           </div>
           <div id="commonChecks" class="check-list"></div>
-        </section>
+          </section>
 
-        <section class="panel">
+          <section class="panel">
           <div class="section-title">
             <h2>建物状況調査</h2>
-            <span>3/5</span>
+            <span>チェック</span>
           </div>
           <div class="legend">
             <span>○ 問題なし</span>
@@ -73,12 +95,22 @@
             <span>- 未確認</span>
           </div>
           <div id="inspectionChecks" class="inspection-list"></div>
-        </section>
+          </section>
+        </div>
 
-        <section class="panel">
+        <div class="page-panel" data-page-panel="completion" hidden>
+          <section class="panel page-intro">
+            <div>
+              <p class="eyebrow">完工写真作成</p>
+              <h2>9枚綴りの完工写真を作成</h2>
+            </div>
+            <button type="button" data-output-only="completion">完工写真だけ出力</button>
+          </section>
+
+          <section class="panel">
           <div class="section-title">
-            <h2>写真</h2>
-            <span>4/5</span>
+            <h2>完工写真</h2>
+            <span>9枚綴り</span>
           </div>
 
           <label class="upload-box">
@@ -87,26 +119,75 @@
             <span>写真アルバムから複数選択できます</span>
           </label>
           <div id="completionPreview" class="photo-grid"></div>
+          </section>
+        </div>
 
+        <div class="page-panel" data-page-panel="correction" hidden>
+          <section class="panel page-intro">
+            <div>
+              <p class="eyebrow">是正箇所作成</p>
+              <h2>是正写真と依頼文を作成</h2>
+            </div>
+            <button type="button" data-output-only="correction">是正箇所だけ出力</button>
+          </section>
+
+          <section class="panel">
+          <div class="section-title">
+            <h2>是正箇所</h2>
+            <span>写真・依頼文</span>
+          </div>
           <label class="upload-box correction-upload">
             <input id="correctionPhotos" type="file" accept="image/*" multiple>
             <strong>是正箇所の写真を追加</strong>
-            <span>写真アルバムから選び、部位と依頼文を作成できます</span>
+            <span>写真アルバムから選び、依頼文を作成できます</span>
           </label>
           <div id="correctionList" class="correction-list"></div>
-        </section>
+          </section>
+        </div>
 
-        <section class="panel">
+        <div class="page-panel" data-page-panel="output" hidden>
+          <section class="panel page-intro">
+            <div>
+              <p class="eyebrow">出力設定</p>
+              <h2>PDFに含めるページを選択</h2>
+            </div>
+          </section>
+
+          <section class="panel">
           <div class="section-title">
-            <h2>出力</h2>
-            <span>5/5</span>
+            <h2>作成するページ</h2>
+            <span>選択式</span>
+          </div>
+          <div class="output-options">
+            <label>
+              <input type="checkbox" name="output_report" value="report" checked>
+              <span>
+                <strong>報告書</strong>
+                <small>チェック表・メモのA4 1枚</small>
+              </span>
+            </label>
+            <label>
+              <input type="checkbox" name="output_correction" value="correction" checked>
+              <span>
+                <strong>是正箇所</strong>
+                <small>住所・是正写真・依頼文</small>
+              </span>
+            </label>
+            <label>
+              <input type="checkbox" name="output_completion" value="completion" checked>
+              <span>
+                <strong>完工写真</strong>
+                <small>9枚綴りの写真ページ</small>
+              </span>
+            </label>
           </div>
           <div class="action-grid">
             <button class="primary" type="button" id="previewButton">報告書プレビュー</button>
             <button type="button" id="exportJsonButton">JSON保存</button>
             <button type="button" id="resetButton">入力リセット</button>
           </div>
-        </section>
+          </section>
+        </div>
       </form>
     </main>
 
@@ -123,6 +204,6 @@
 
     <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
-    <script src="./app.js?v=19"></script>
+    <script src="./app.js?v=20"></script>
   </body>
 </html>

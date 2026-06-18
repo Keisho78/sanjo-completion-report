@@ -65,13 +65,30 @@ const correctionList = document.querySelector("#correctionList");
 const previewDialog = document.querySelector("#previewDialog");
 const reportPreview = document.querySelector("#reportPreview");
 const printRoot = document.querySelector("#printRoot");
+const pageTabs = document.querySelectorAll("[data-page-tab]");
+const pagePanels = document.querySelectorAll("[data-page-panel]");
+const outputInputs = document.querySelectorAll("[name^='output_']");
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=19").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=20").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
+}
+
+function showPage(pageName) {
+  pageTabs.forEach((tab) => {
+    const active = tab.dataset.pageTab === pageName;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  pagePanels.forEach((panel) => {
+    panel.hidden = panel.dataset.pagePanel !== pageName;
+  });
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function makeSegmented(name, options, value = "none") {
@@ -266,10 +283,20 @@ function loadDraft() {
 
 function buildPreview() {
   const data = getFormData();
-  const completionPages = chunk(data.completionPhotos, 9);
-  const correctionPages = chunk(data.correctionPhotos, 9);
+  const selectedOutputs = getSelectedOutputs();
+  if (!selectedOutputs.length) {
+    saveStatus.textContent = "出力ページを選択";
+    return false;
+  }
+
+  const includeReport = selectedOutputs.includes("report");
+  const includeCompletion = selectedOutputs.includes("completion");
+  const includeCorrection = selectedOutputs.includes("correction");
+  const completionPages = includeCompletion ? photoPages(data.completionPhotos) : [];
+  const correctionPages = includeCorrection ? photoPages(data.correctionPhotos) : [];
 
   const html = `
+    ${includeReport ? `
     <section class="print-page report-page">
       <h2>完工報告書</h2>
       <div class="report-meta">
@@ -340,6 +367,7 @@ function buildPreview() {
         </section>
       </div>
     </section>
+    ` : ""}
     ${correctionPages.map((photos, pageIndex) => `
       <section class="print-page correction-page">
         <h2>是正箇所${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}</h2>
@@ -371,6 +399,11 @@ function buildPreview() {
 
   reportPreview.innerHTML = html;
   printRoot.innerHTML = html;
+  return true;
+}
+
+function photoPages(photos) {
+  return photos.length ? chunk(photos, 9) : [[]];
 }
 
 function renderNinePhotoSlots(photos, pageIndex, renderPhoto) {
@@ -419,6 +452,30 @@ function splitIntoColumns(items, columnCount) {
     const start = index * size;
     return items.slice(start, start + size);
   });
+}
+
+function getSelectedOutputs() {
+  return [...outputInputs]
+    .filter((input) => input.checked)
+    .map((input) => input.value);
+}
+
+function setOutputSelection(values) {
+  outputInputs.forEach((input) => {
+    input.checked = values.includes(input.value);
+  });
+  saveDraft();
+}
+
+function previewSelectedOutputs() {
+  if (!buildPreview()) return;
+  previewDialog.showModal();
+}
+
+function previewOnly(outputType) {
+  setOutputSelection([outputType]);
+  showPage("output");
+  previewSelectedOutputs();
 }
 
 function createId() {
@@ -541,8 +598,7 @@ correctionList.addEventListener("change", (event) => {
 });
 
 document.querySelector("#previewButton").addEventListener("click", () => {
-  buildPreview();
-  previewDialog.showModal();
+  previewSelectedOutputs();
 });
 
 document.querySelector("#closePreviewButton").addEventListener("click", () => {
@@ -550,7 +606,7 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
 });
 
 document.querySelector("#printButton").addEventListener("click", () => {
-  buildPreview();
+  if (!buildPreview()) return;
   setPrintDocumentTitle();
   document.body.classList.add("is-printing");
   requestAnimationFrame(() => {
@@ -559,7 +615,7 @@ document.querySelector("#printButton").addEventListener("click", () => {
 });
 
 window.addEventListener("beforeprint", () => {
-  buildPreview();
+  if (!buildPreview()) return;
   setPrintDocumentTitle();
   document.body.classList.add("is-printing");
 });
@@ -582,5 +638,15 @@ document.querySelector("#resetButton").addEventListener("click", () => {
   renderChecks();
   renderCompletionPhotos();
   renderCorrectionPhotos();
+  setOutputSelection(["report", "correction", "completion"]);
+  showPage("report");
   saveStatus.textContent = "未保存";
+});
+
+pageTabs.forEach((tab) => {
+  tab.addEventListener("click", () => showPage(tab.dataset.pageTab));
+});
+
+document.querySelectorAll("[data-output-only]").forEach((button) => {
+  button.addEventListener("click", () => previewOnly(button.dataset.outputOnly));
 });

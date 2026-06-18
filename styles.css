@@ -16,6 +16,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -91,6 +95,70 @@ h2 {
 .report-form {
   display: grid;
   gap: 12px;
+}
+
+.property-panel .section-title {
+  margin-bottom: 10px;
+}
+
+.property-panel .field:last-child,
+.property-panel .two-col .field {
+  margin-bottom: 0;
+}
+
+.mode-nav {
+  position: sticky;
+  top: 72px;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 18px rgba(20, 42, 35, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.mode-tab {
+  min-height: 38px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mode-tab.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.page-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.page-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: none;
+}
+
+.page-intro h2 {
+  font-size: 17px;
+}
+
+.page-intro button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .panel {
@@ -359,6 +427,44 @@ textarea {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+}
+
+.output-options {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.output-options label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.output-options input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.output-options span {
+  display: grid;
+  gap: 2px;
+}
+
+.output-options strong {
+  font-size: 14px;
+}
+
+.output-options small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 button {
@@ -709,6 +815,16 @@ button.primary {
     padding: 10px 8px;
   }
 
+  .mode-nav {
+    top: 60px;
+    margin: 0 -1px;
+  }
+
+  .mode-tab {
+    min-height: 35px;
+    font-size: 12px;
+  }
+
   h1 {
     font-size: 21px;
   }
@@ -719,6 +835,20 @@ button.primary {
 
   .panel {
     padding: 10px;
+  }
+
+  .page-panel {
+    gap: 8px;
+  }
+
+  .page-intro {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .page-intro button {
+    width: 100%;
   }
 
   .section-title {
