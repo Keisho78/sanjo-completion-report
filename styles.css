@@ -449,7 +449,7 @@ textarea {
 
 .plan-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -461,32 +461,48 @@ textarea {
 
 .plan-board {
   position: relative;
-  display: grid;
-  min-height: 280px;
-  place-items: center;
-  overflow: hidden;
+  display: block;
+  height: min(62vh, 430px);
+  min-height: 320px;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  touch-action: none;
+  touch-action: pan-x pan-y;
+  cursor: crosshair;
+  -webkit-overflow-scrolling: touch;
+}
+
+.plan-board.is-zoomed {
+  cursor: grab;
+}
+
+.plan-board.is-zoomed:active {
+  cursor: grabbing;
+}
+
+.plan-canvas {
+  position: relative;
+  width: 100%;
+  margin: auto;
 }
 
 .plan-image {
   width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
+  height: auto;
   display: block;
   user-select: none;
+  -webkit-user-drag: none;
 }
 
 .plan-marker,
 .plan-print-marker {
   position: absolute;
-  transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
   border: 2px solid #111;
-  border-radius: 999px;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
   background: rgba(255, 255, 255, 0.92);
   color: #111;
   font-weight: 800;
@@ -494,12 +510,21 @@ textarea {
 }
 
 .plan-marker {
-  width: 34px;
-  height: 34px;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
   padding: 0;
   box-shadow: 0 3px 9px rgba(0, 0, 0, 0.2);
   cursor: grab;
   z-index: 2;
+  font-size: 12px;
+  touch-action: none;
+}
+
+.plan-print-marker {
+  transform: translate(-50%, -50%);
 }
 
 .plan-marker:active {
@@ -923,9 +948,9 @@ button.primary {
 }
 
 .plan-print-marker {
-  width: 8mm;
-  height: 8mm;
-  font-size: 12px;
+  width: 5mm;
+  height: 5mm;
+  font-size: 8px;
 }
 
 .plan-print-legend {
@@ -1103,12 +1128,14 @@ button.primary {
   }
 
   .plan-board {
-    min-height: 230px;
+    height: 320px;
+    min-height: 280px;
   }
 
   .plan-marker {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
   }
 
   .symbol-legend {

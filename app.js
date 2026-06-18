@@ -50,7 +50,12 @@ const state = {
   completionPhotos: [],
   correctionPhotos: [],
   floorPlan: null,
-  planMarkers: []
+  planMarkers: [],
+  planView: {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  }
 };
 
 const DEFAULT_DOCUMENT_TITLE = document.title;
@@ -76,10 +81,14 @@ const outputInputs = document.querySelectorAll("[name^='output_']");
 const symbolChips = document.querySelectorAll("[data-symbol]");
 let selectedPlanSymbol = PLAN_SYMBOLS[0];
 let draggedMarkerId = null;
+let isPanningPlan = false;
+let planPanStart = null;
+let planPointerMoved = false;
+let lastPlanPointerStart = 0;
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=21").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=22").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -222,17 +231,29 @@ function renderFloorPlan() {
   }
 
   floorPlanBoard.innerHTML = `
-    <img class="plan-image" src="${state.floorPlan.src}" alt="${escapeHtml(state.floorPlan.name)}">
-    ${state.planMarkers.map((marker) => `
-      <button
-        class="plan-marker"
+    <div class="plan-canvas" style="${getPlanCanvasStyle()}">
+      <img class="plan-image" src="${state.floorPlan.src}" alt="${escapeHtml(state.floorPlan.name)}" draggable="false">
+      ${state.planMarkers.map((marker) => `
+        <button
+          class="plan-marker"
         type="button"
         data-marker-id="${marker.id}"
-        style="left: ${marker.x}%; top: ${marker.y}%"
+        style="${getPlanMarkerStyle(marker)}"
         aria-label="記号 ${escapeHtml(marker.symbol)}"
       >${escapeHtml(marker.symbol)}</button>
-    `).join("")}
+      `).join("")}
+    </div>
   `;
+  floorPlanBoard.classList.toggle("is-zoomed", state.planView.zoom > 1);
+}
+
+function getPlanCanvasStyle() {
+  const view = state.planView;
+  return `width: ${view.zoom * 100}%;`;
+}
+
+function getPlanMarkerStyle(marker) {
+  return `left: ${marker.x}%; top: ${marker.y}%;`;
 }
 
 function getFormData() {
@@ -252,6 +273,7 @@ function getFormData() {
   data.correctionPhotos = state.correctionPhotos;
   data.floorPlan = state.floorPlan;
   data.planMarkers = state.planMarkers;
+  data.planView = state.planView;
   return data;
 }
 
@@ -278,7 +300,8 @@ function getDraftDataForStorage() {
       comment
     })),
     floorPlan: data.floorPlan ? { id: data.floorPlan.id, name: data.floorPlan.name } : null,
-    planMarkers: data.planMarkers
+    planMarkers: data.planMarkers,
+    planView: data.planView
   };
 }
 
@@ -313,6 +336,13 @@ function loadDraft() {
   state.completionPhotos = (data.completionPhotos || []).filter((photo) => photo.src);
   state.correctionPhotos = (data.correctionPhotos || []).filter((photo) => photo.src);
   state.planMarkers = Array.isArray(data.planMarkers) ? data.planMarkers : [];
+  if (data.planView) {
+    state.planView = {
+      zoom: data.planView.zoom || 1,
+      panX: data.planView.panX || 0,
+      panY: data.planView.panY || 0
+    };
+  }
 }
 
 function buildPreview() {
@@ -593,10 +623,10 @@ function movePlanMarker(id, clientX, clientY, shouldSave = true) {
 }
 
 function getPlanPosition(clientX, clientY) {
-  const image = floorPlanBoard.querySelector(".plan-image");
-  if (!image) return null;
+  const canvas = floorPlanBoard.querySelector(".plan-canvas");
+  if (!canvas) return null;
 
-  const rect = image.getBoundingClientRect();
+  const rect = canvas.getBoundingClientRect();
   const x = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
   const y = clamp(((clientY - rect.top) / rect.height) * 100, 0, 100);
   return {
@@ -619,6 +649,49 @@ function undoPlanMarker() {
   state.planMarkers.pop();
   renderFloorPlan();
   saveDraft();
+}
+
+function setPlanZoom(nextZoom) {
+  state.planView.zoom = clamp(nextZoom, 1, 4);
+  constrainPlanPan();
+  applyPlanView();
+  if (state.planView.zoom === 1) floorPlanBoard.scrollTo({ left: 0, top: 0 });
+  saveDraft();
+}
+
+function resetPlanView() {
+  state.planView = {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
+  applyPlanView();
+  floorPlanBoard.scrollTo({ left: 0, top: 0 });
+  saveDraft();
+}
+
+function applyPlanView() {
+  const canvas = floorPlanBoard.querySelector(".plan-canvas");
+  if (canvas) canvas.style.cssText = getPlanCanvasStyle();
+  floorPlanBoard.classList.toggle("is-zoomed", state.planView.zoom > 1);
+}
+
+function panPlan(deltaX, deltaY) {
+  if (state.planView.zoom <= 1) return;
+  state.planView.panX += deltaX;
+  state.planView.panY += deltaY;
+  constrainPlanPan();
+  applyPlanView();
+}
+
+function constrainPlanPan() {
+  const board = floorPlanBoard.getBoundingClientRect();
+  const canvas = floorPlanBoard.querySelector(".plan-canvas");
+  if (!canvas) return;
+  const maxX = (board.width * (state.planView.zoom - 1)) / 2;
+  const maxY = (board.height * (state.planView.zoom - 1)) / 2;
+  state.planView.panX = clamp(state.planView.panX, -maxX, maxX);
+  state.planView.panY = clamp(state.planView.panY, -maxY, maxY);
 }
 
 function createId() {
@@ -715,6 +788,11 @@ floorPlanInput.addEventListener("change", (event) => {
   revokePhotoUrl(state.floorPlan);
   state.floorPlan = readPhotoFile(file);
   state.planMarkers = [];
+  state.planView = {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
   renderFloorPlan();
   saveDraft();
 });
@@ -794,6 +872,11 @@ document.querySelector("#resetButton").addEventListener("click", () => {
   state.correctionPhotos = [];
   state.floorPlan = null;
   state.planMarkers = [];
+  state.planView = {
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
   renderChecks();
   renderCompletionPhotos();
   renderCorrectionPhotos();
@@ -844,31 +927,79 @@ floorPlanBoard.addEventListener("drop", (event) => {
 
 floorPlanBoard.addEventListener("click", (event) => {
   if (event.target.closest("[data-marker-id]")) return;
+  if (planPointerMoved) {
+    planPointerMoved = false;
+    return;
+  }
   addPlanMarker(selectedPlanSymbol, event.clientX, event.clientY);
 });
 
 floorPlanBoard.addEventListener("pointerdown", (event) => {
   const marker = event.target.closest("[data-marker-id]");
-  if (!marker) return;
-  event.preventDefault();
-  marker.setPointerCapture(event.pointerId);
-  draggedMarkerId = marker.dataset.markerId;
+  lastPlanPointerStart = Date.now();
+  planPointerMoved = false;
+  if (marker) {
+    event.preventDefault();
+    floorPlanBoard.setPointerCapture(event.pointerId);
+    draggedMarkerId = marker.dataset.markerId;
+  }
 });
 
 floorPlanBoard.addEventListener("pointermove", (event) => {
-  if (!draggedMarkerId || event.buttons !== 1) return;
-  movePlanMarker(draggedMarkerId, event.clientX, event.clientY, false);
+  if (draggedMarkerId) {
+    planPointerMoved = true;
+    movePlanMarker(draggedMarkerId, event.clientX, event.clientY, false);
+  }
 });
 
 floorPlanBoard.addEventListener("pointerup", () => {
-  if (draggedMarkerId) saveDraft();
+  if (draggedMarkerId || isPanningPlan) saveDraft();
   draggedMarkerId = null;
+  isPanningPlan = false;
+  planPanStart = null;
 });
 
 window.addEventListener("pointerup", () => {
-  if (draggedMarkerId) saveDraft();
+  if (draggedMarkerId || isPanningPlan) saveDraft();
   draggedMarkerId = null;
+  isPanningPlan = false;
+  planPanStart = null;
+});
+
+floorPlanBoard.addEventListener("mousedown", (event) => {
+  if (Date.now() - lastPlanPointerStart < 500) return;
+  if (event.button !== 0) return;
+  const marker = event.target.closest("[data-marker-id]");
+  planPointerMoved = false;
+  if (marker) {
+    event.preventDefault();
+    draggedMarkerId = marker.dataset.markerId;
+  }
+});
+
+window.addEventListener("mousemove", (event) => {
+  if (draggedMarkerId) {
+    planPointerMoved = true;
+    movePlanMarker(draggedMarkerId, event.clientX, event.clientY, false);
+  }
+});
+
+window.addEventListener("mouseup", () => {
+  if (draggedMarkerId || isPanningPlan) saveDraft();
+  draggedMarkerId = null;
+  isPanningPlan = false;
+  planPanStart = null;
 });
 
 document.querySelector("#undoPlanMarker").addEventListener("click", undoPlanMarker);
 document.querySelector("#clearPlanMarkers").addEventListener("click", clearPlanMarkers);
+document.querySelector("#zoomInPlan").addEventListener("click", () => setPlanZoom(state.planView.zoom + 0.5));
+document.querySelector("#zoomOutPlan").addEventListener("click", () => setPlanZoom(state.planView.zoom - 0.5));
+document.querySelector("#resetPlanView").addEventListener("click", resetPlanView);
+
+floorPlanBoard.addEventListener("wheel", (event) => {
+  if (!state.floorPlan?.src) return;
+  event.preventDefault();
+  const direction = event.deltaY > 0 ? -0.25 : 0.25;
+  setPlanZoom(state.planView.zoom + direction);
+}, { passive: false });
