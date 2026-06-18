@@ -75,6 +75,7 @@ const floorPlanBoard = document.querySelector("#floorPlanBoard");
 const previewDialog = document.querySelector("#previewDialog");
 const reportPreview = document.querySelector("#reportPreview");
 const printRoot = document.querySelector("#printRoot");
+const printPageStyle = document.createElement("style");
 const pageTabs = document.querySelectorAll("[data-page-tab]");
 const pagePanels = document.querySelectorAll("[data-page-panel]");
 const outputInputs = document.querySelectorAll("[name^='output_']");
@@ -86,9 +87,11 @@ let planPanStart = null;
 let planPointerMoved = false;
 let lastPlanPointerStart = 0;
 
+document.head.append(printPageStyle);
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=26").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=27").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -510,8 +513,9 @@ function photoPages(photos) {
 
 function renderPlanPrintPage(data) {
   const frameStyle = getPlanPrintFrameStyle(data.floorPlan);
+  const orientation = getPlanOrientation(data.floorPlan);
   return `
-    <section class="print-page plan-page">
+    <section class="print-page plan-page is-${orientation}-plan">
       <h2>間取図面</h2>
       <div class="plan-print-frame" style="${frameStyle}">
         <img src="${data.floorPlan.src}" alt="">
@@ -536,8 +540,7 @@ function renderPlanPrintPage(data) {
 }
 
 function getPlanPrintFrameStyle(plan) {
-  const maxWidth = 293;
-  const maxHeight = 206;
+  const { maxWidth, maxHeight } = getPlanPrintBounds(plan);
   const width = plan?.width || 297;
   const height = plan?.height || 210;
   const aspect = width / height;
@@ -547,6 +550,18 @@ function getPlanPrintFrameStyle(plan) {
   }
 
   return `width: ${(maxHeight * aspect).toFixed(2)}mm; height: ${maxHeight}mm;`;
+}
+
+function getPlanOrientation(plan) {
+  const width = plan?.width || 297;
+  const height = plan?.height || 210;
+  return width >= height ? "landscape" : "portrait";
+}
+
+function getPlanPrintBounds(plan) {
+  return getPlanOrientation(plan) === "landscape"
+    ? { maxWidth: 293, maxHeight: 206 }
+    : { maxWidth: 206, maxHeight: 293 };
 }
 
 function renderNinePhotoSlots(photos, pageIndex, renderPhoto) {
@@ -764,10 +779,29 @@ function sanitizeFileName(value) {
 
 function setPrintDocumentTitle() {
   document.title = getOutputFileName();
+  setPrintPageSizeHint();
 }
 
 function restoreDocumentTitle() {
   document.title = DEFAULT_DOCUMENT_TITLE;
+  printPageStyle.textContent = "";
+}
+
+function setPrintPageSizeHint() {
+  const selectedOutputs = getSelectedOutputs();
+  if (selectedOutputs.length === 1 && selectedOutputs[0] === "plan" && state.floorPlan?.src) {
+    printPageStyle.textContent = `
+      @media print {
+        @page {
+          size: A4 ${getPlanOrientation(state.floorPlan)};
+          margin: 0;
+        }
+      }
+    `;
+    return;
+  }
+
+  printPageStyle.textContent = "";
 }
 
 function statusLabel(value) {

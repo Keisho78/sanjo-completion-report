@@ -918,6 +918,12 @@ button.primary {
   gap: 0;
 }
 
+.plan-page.is-portrait-plan {
+  width: 210mm;
+  min-height: 297mm;
+  height: 297mm;
+}
+
 .plan-page h2 {
   position: absolute;
   top: 2mm;
@@ -1220,6 +1226,11 @@ button.primary {
     margin: 0;
   }
 
+  @page plan-portrait {
+    size: A4 portrait;
+    margin: 0;
+  }
+
   body {
     background: #fff;
   }
@@ -1249,11 +1260,19 @@ button.primary {
     box-shadow: none;
   }
 
-  .plan-page {
+  .plan-page.is-landscape-plan {
     page: plan-landscape;
     width: 297mm;
     min-height: 210mm;
     height: 210mm;
+    padding: 2mm;
+  }
+
+  .plan-page.is-portrait-plan {
+    page: plan-portrait;
+    width: 210mm;
+    min-height: 297mm;
+    height: 297mm;
     padding: 2mm;
   }
 
