@@ -102,7 +102,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=36").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=38").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -178,8 +178,12 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
     for (let index = 0; index < list.length; index += 1) {
       try {
         saveStatus.textContent = `写真圧縮 ${index + 1}/${list.length}`;
-        const photo = await readPhotoFile(list[index]);
-        addedPhotos.push(decoratePhoto ? decoratePhoto(photo) : photo);
+        const basePhoto = await readPhotoFile(list[index]);
+        const photo = decoratePhoto ? decoratePhoto(basePhoto) : basePhoto;
+        if (!photo.imageElement && basePhoto.imageElement) {
+          setPhotoImageElement(photo, basePhoto.imageElement);
+        }
+        addedPhotos.push(photo);
       } catch (error) {
         console.warn("写真を追加できませんでした", error);
       }
@@ -201,7 +205,7 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
 
 async function readPhotoFile(file) {
   const compressed = await compressImageFile(file, PHOTO_MAX_EDGE, PHOTO_JPEG_QUALITY);
-  return {
+  const photo = {
     id: createId(),
     name: file.name,
     src: compressed.src,
@@ -210,6 +214,8 @@ async function readPhotoFile(file) {
     originalSize: file.size,
     compressedSize: compressed.size
   };
+  await cachePhotoImage(photo);
+  return photo;
 }
 
 async function compressImageFile(file, maxEdge, quality) {
@@ -240,7 +246,7 @@ async function compressImageFile(file, maxEdge, quality) {
 
     const blob = await canvasToBlob(canvas, "image/jpeg", quality);
     return {
-      src: await blobToDataUrl(blob),
+      src: URL.createObjectURL(blob),
       width,
       height,
       size: blob.size
@@ -1024,7 +1030,7 @@ async function drawPhotoSlot(context, options) {
 
   if (photo?.src) {
     try {
-      const image = await loadImage(photo.src);
+      const image = await getPhotoImage(photo);
       drawCoverImage(context, image, x + 1, y + 1, width - 2, frameHeight - 2);
     } catch (error) {
       drawMissingPhoto(context, x, y, width, frameHeight);
@@ -1105,6 +1111,32 @@ function drawWrappedText(context, text, x, y, width, height, options) {
   const startY = y + Math.max(0, (height - visibleLines.length * lineHeight) / 2);
   visibleLines.forEach((item, index) => {
     context.fillText(item, textX, startY + index * lineHeight);
+  });
+}
+
+async function cachePhotoImage(photo) {
+  if (!photo?.src) return null;
+  try {
+    const image = await loadImage(photo.src);
+    setPhotoImageElement(photo, image);
+    return image;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getPhotoImage(photo) {
+  if (photo?.imageElement) return photo.imageElement;
+  const image = await loadImage(photo.src);
+  setPhotoImageElement(photo, image);
+  return image;
+}
+
+function setPhotoImageElement(photo, image) {
+  Object.defineProperty(photo, "imageElement", {
+    value: image,
+    enumerable: false,
+    configurable: true
   });
 }
 
