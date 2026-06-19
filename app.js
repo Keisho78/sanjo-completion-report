@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=46").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=47").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -165,7 +165,7 @@ function renderChecks() {
       <div class="check-title">${index + 1}. ${item}</div>
       ${makeSegmented(`common_${index}`, [
         { label: "なし", value: "none" },
-        { label: "確認", value: "check" },
+        { label: "あり", value: "check" },
         { label: "是正", value: "repair" },
         { label: "-", value: "unknown" }
       ])}
@@ -1965,7 +1965,7 @@ function isIosPrintBrowser() {
 function statusLabel(value) {
   return {
     none: "なし",
-    check: "確認",
+    check: "あり",
     repair: "是正",
     unknown: "-"
   }[value] || "-";
