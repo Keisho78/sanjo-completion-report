@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=52").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=53").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1006,11 +1006,11 @@ function buildPreview() {
             `).join("")}
           </div>
         </section>
-        <section class="print-section compact-section">
-          <h3>メモ</h3>
-          <div class="print-box">${escapeHtml(data.generalMemo || "")}</div>
-        </section>
       </div>
+      <section class="print-section compact-section report-memo-section">
+        <h3>メモ</h3>
+        <div class="print-box">${escapeHtml(data.generalMemo || "")}</div>
+      </section>
       <section class="print-section compact-section">
         <h3>建物状況調査</h3>
         <div class="inspection-columns">
