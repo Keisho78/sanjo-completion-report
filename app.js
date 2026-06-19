@@ -84,8 +84,12 @@ const previewDialog = document.querySelector("#previewDialog");
 const reportPreview = document.querySelector("#reportPreview");
 const printRoot = document.querySelector("#printRoot");
 const printPageStyle = document.createElement("style");
+const homeView = document.querySelector("#homeView");
+const editorView = document.querySelector("#editorView");
+const homeDraftGrid = document.querySelector("#homeDraftGrid");
 const draftSelect = document.querySelector("#draftSelect");
-const newDraftButton = document.querySelector("#newDraftButton");
+const homeNewDraftButton = document.querySelector("#homeNewDraftButton");
+const backHomeButton = document.querySelector("#backHomeButton");
 const deleteDraftButton = document.querySelector("#deleteDraftButton");
 const draftNote = document.querySelector("#draftNote");
 const pageTabs = document.querySelectorAll("[data-page-tab]");
@@ -107,7 +111,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=41").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=42").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -125,6 +129,19 @@ function showPage(pageName) {
   });
 
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showHome() {
+  editorView.hidden = true;
+  homeView.hidden = false;
+  renderDraftList();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showEditor() {
+  homeView.hidden = true;
+  editorView.hidden = false;
+  showPage("report");
 }
 
 function makeSegmented(name, options, value = "none") {
@@ -179,6 +196,7 @@ async function initApp() {
   renderCompletionPhotos();
   renderCorrectionPhotos();
   renderFloorPlan();
+  showHome();
 }
 
 async function appendPhotos(files, collection, render, decoratePhoto) {
@@ -740,10 +758,32 @@ function renderDraftList(records = getDraftRecords()) {
   draftNote.textContent = sorted.length
     ? `${sorted.length}件の下書きを保存中`
     : "物件名ごとに自動保存されます。";
+  renderHomeDraftGrid(sorted);
+}
+
+function renderHomeDraftGrid(records) {
+  if (!homeDraftGrid) return;
+  homeDraftGrid.innerHTML = records.length
+    ? records.map((record) => `
+      <button
+        class="home-draft-card ${record.id === activeDraftId ? "is-active" : ""}"
+        type="button"
+        data-open-draft="${record.id}"
+      >
+        <span class="document-stack" aria-hidden="true"><span></span></span>
+        <span class="draft-address">${escapeHtml(getDraftAddress(record))}</span>
+        <span class="draft-updated">${escapeHtml(formatDraftDate(record.updatedAt) || "未保存")}</span>
+      </button>
+    `).join("")
+    : `<div class="home-empty">＋ボタンから物件を追加</div>`;
+}
+
+function getDraftAddress(record) {
+  return String(record.data?.propertyName || "").trim() || "無題の物件";
 }
 
 function getDraftTitle(record) {
-  const name = String(record.data?.propertyName || "").trim() || "無題の物件";
+  const name = getDraftAddress(record);
   const date = formatDraftDate(record.updatedAt);
   return date ? `${name}（${date}）` : name;
 }
@@ -785,19 +825,43 @@ function resetCurrentForm() {
 async function handleDraftSelectChange(event) {
   event.stopPropagation();
   const nextDraftId = event.target.value;
-  if (!nextDraftId || nextDraftId === activeDraftId) return;
+  if (!nextDraftId) return;
+  await openDraft(nextDraftId);
+}
+
+async function openDraft(draftId) {
+  if (!draftId) return;
+  if (draftId === activeDraftId) {
+    showEditor();
+    return;
+  }
 
   saveDraft();
   cancelScheduledAssetPersist();
   await persistDraftAssets(activeDraftId);
-  activeDraftId = nextDraftId;
+  activeDraftId = draftId;
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
   const record = getDraftRecords().find((item) => item.id === activeDraftId);
   if (record) {
     await applyDraftData(record.data);
     renderDraftList();
     saveStatus.textContent = "下書き切替";
+    showEditor();
   }
+}
+
+async function createNewDraft() {
+  saveDraft();
+  cancelScheduledAssetPersist();
+  await persistDraftAssets(activeDraftId);
+  activeDraftId = createId();
+  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+  resetCurrentForm();
+  saveDraft();
+  renderDraftList();
+  showEditor();
+  form.elements.propertyName?.focus();
+  saveStatus.textContent = "新規下書き";
 }
 
 function buildPreview() {
@@ -1939,17 +2003,19 @@ document.querySelector("#exportJsonButton").addEventListener("click", exportJson
 draftSelect.addEventListener("input", handleDraftSelectChange);
 draftSelect.addEventListener("change", handleDraftSelectChange);
 
-newDraftButton.addEventListener("click", async () => {
+homeDraftGrid.addEventListener("click", async (event) => {
+  const card = event.target.closest("[data-open-draft]");
+  if (!card) return;
+  await openDraft(card.dataset.openDraft);
+});
+
+homeNewDraftButton.addEventListener("click", createNewDraft);
+
+backHomeButton.addEventListener("click", async () => {
   saveDraft();
   cancelScheduledAssetPersist();
   await persistDraftAssets(activeDraftId);
-  activeDraftId = createId();
-  localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-  resetCurrentForm();
-  saveDraft();
-  renderDraftList();
-  form.elements.propertyName?.focus();
-  saveStatus.textContent = "新規下書き";
+  showHome();
 });
 
 deleteDraftButton.addEventListener("click", async () => {
@@ -1974,6 +2040,7 @@ deleteDraftButton.addEventListener("click", async () => {
     saveStatus.textContent = "下書き削除";
   }
   renderDraftList();
+  showHome();
 });
 
 document.querySelector("#resetButton").addEventListener("click", () => {
