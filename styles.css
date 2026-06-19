@@ -931,7 +931,7 @@ button.primary {
 }
 
 .print-section {
-  margin-top: 1.6mm;
+  margin-top: 2.4mm;
 }
 
 .print-row {
@@ -944,8 +944,9 @@ button.primary {
 .report-page {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   height: 297mm;
-  padding: 6mm 7mm;
+  padding: 7.5mm 7.5mm;
   border-color: #dfe7e2;
   font-size: 10px;
   overflow: hidden;
@@ -956,7 +957,7 @@ button.primary {
   align-items: center;
   justify-content: space-between;
   min-height: 10mm;
-  margin: 0 0 2mm;
+  margin: 0;
   padding: 0 3.5mm;
   border-radius: 1.5mm;
   background: #0b4f43;
@@ -1026,6 +1027,10 @@ button.primary {
   min-height: 0;
 }
 
+.report-page .print-section {
+  margin-top: 0;
+}
+
 .common-columns,
 .inspection-columns {
   display: grid;
@@ -1064,14 +1069,14 @@ button.primary {
   width: 100%;
   border-collapse: collapse;
   font-size: 11.8px;
-  line-height: 1.18;
+  line-height: 1.14;
   table-layout: fixed;
 }
 
 .print-table th,
 .print-table td {
   border: 1px solid #aebfb7;
-  padding: 0.66mm 0.85mm;
+  padding: 0.58mm 0.82mm;
   vertical-align: top;
   word-break: break-word;
 }
@@ -1091,7 +1096,7 @@ button.primary {
   width: 100%;
   min-height: 4.6mm;
   align-items: center;
-  margin: 0 0 0.9mm;
+  margin: 0 0 1.15mm;
   padding: 0 2mm;
   border-left: 1mm solid #0b4f43;
   border-radius: 0.8mm;
@@ -1151,8 +1156,8 @@ button.primary {
   display: grid;
   grid-template-columns: 0.9fr 1.5fr;
   gap: 3mm;
-  margin-top: auto;
-  padding: 1.2mm 1.8mm;
+  margin-top: 0;
+  padding: 1.5mm 1.8mm;
   border: 1px solid #d4ddd8;
   border-radius: 1.2mm;
   background: #fafcfb;
