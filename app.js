@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=60").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=61").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -452,6 +452,17 @@ function getFormData() {
   data.planMarkers = state.planMarkers;
   data.planView = state.planView;
   return data;
+}
+
+function commitActiveFormField() {
+  const active = document.activeElement;
+  if (!active || !form.contains(active) || typeof active.blur !== "function") return;
+  active.blur();
+}
+
+function prepareFormForOutput() {
+  commitActiveFormField();
+  saveDraft();
 }
 
 function saveDraft() {
@@ -959,6 +970,7 @@ async function deleteDraft(draftId) {
 }
 
 function buildPreview() {
+  prepareFormForOutput();
   const data = getFormData();
   data.completionPhotos = validPhotos(data.completionPhotos);
   data.correctionPhotos = validPhotos(data.correctionPhotos);
