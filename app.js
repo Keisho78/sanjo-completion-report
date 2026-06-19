@@ -102,7 +102,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=35").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=36").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -829,8 +829,13 @@ async function exportSelectedPdfDirect() {
   if (!buildPreview()) return false;
 
   saveStatus.textContent = "PDF作成中";
+  const data = getFormData();
+  const correctionPages = photoPages(data.correctionPhotos);
+  const completionPages = photoPages(data.completionPhotos);
   const pages = [];
   const previewPages = [...reportPreview.querySelectorAll(".print-page")];
+  let correctionPageIndex = 0;
+  let completionPageIndex = 0;
   for (const page of previewPages) {
     if (page.classList.contains("plan-page") && state.floorPlan?.src) {
       const { canvas } = await createFloorPlanPdfCanvas();
@@ -842,6 +847,45 @@ async function exportSelectedPdfDirect() {
         pageWidth: 841.89,
         pageHeight: 595.28
       });
+      continue;
+    }
+
+    if (page.classList.contains("correction-page")) {
+      const canvas = await createPhotoPdfCanvas({
+        title: `是正箇所${correctionPages.length > 1 ? ` ${correctionPageIndex + 1}` : ""}`,
+        photos: correctionPages[correctionPageIndex] || [],
+        pageIndex: correctionPageIndex,
+        kind: "correction",
+        address: correctionPageIndex === 0 ? data.propertyName || "" : ""
+      });
+      const imageBytes = await canvasToJpegBytes(canvas);
+      pages.push({
+        imageBytes,
+        imageWidth: canvas.width,
+        imageHeight: canvas.height,
+        pageWidth: 595.28,
+        pageHeight: 841.89
+      });
+      correctionPageIndex += 1;
+      continue;
+    }
+
+    if (page.classList.contains("photo-page")) {
+      const canvas = await createPhotoPdfCanvas({
+        title: `完工写真${completionPages.length > 1 ? ` ${completionPageIndex + 1}` : ""}`,
+        photos: completionPages[completionPageIndex] || [],
+        pageIndex: completionPageIndex,
+        kind: "completion"
+      });
+      const imageBytes = await canvasToJpegBytes(canvas);
+      pages.push({
+        imageBytes,
+        imageWidth: canvas.width,
+        imageHeight: canvas.height,
+        pageWidth: 595.28,
+        pageHeight: 841.89
+      });
+      completionPageIndex += 1;
       continue;
     }
 
@@ -890,6 +934,178 @@ async function createFloorPlanPdfCanvas() {
   drawPlanLegendForPdf(context, pageWidth, pageHeight);
 
   return { canvas };
+}
+
+async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = "" }) {
+  const pageWidth = 1588;
+  const pageHeight = 2246;
+  const mm = pageWidth / 210;
+  const margin = 10 * mm;
+  const canvas = document.createElement("canvas");
+  canvas.width = pageWidth;
+  canvas.height = pageHeight;
+  const context = canvas.getContext("2d", { alpha: false });
+
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, pageWidth, pageHeight);
+  context.strokeStyle = "#cfd8d3";
+  context.lineWidth = 2;
+  context.strokeRect(1, 1, pageWidth - 2, pageHeight - 2);
+
+  context.fillStyle = "#111";
+  context.font = "700 34px system-ui, -apple-system, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  context.fillText(title, pageWidth / 2, margin);
+
+  let gridTop = margin + 58;
+  if (kind === "correction" && address) {
+    drawAddressBox(context, margin, gridTop, pageWidth - margin * 2, 38, address);
+    gridTop += 58;
+  }
+
+  const gap = (kind === "correction" ? 4 : 5) * mm;
+  const gridHeight = (kind === "correction" && address ? 235 : 246) * mm;
+  const gridWidth = pageWidth - margin * 2;
+  const cellWidth = (gridWidth - gap * 2) / 3;
+  const cellHeight = (gridHeight - gap * 2) / 3;
+  const figureGap = 1.5 * mm;
+  const captionHeight = (kind === "correction" ? 13 : 5) * mm;
+  const frameHeight = cellHeight - figureGap - captionHeight;
+
+  for (let index = 0; index < 9; index += 1) {
+    const row = Math.floor(index / 3);
+    const column = index % 3;
+    const x = margin + column * (cellWidth + gap);
+    const y = gridTop + row * (cellHeight + gap);
+    const photo = photos[index];
+    const serial = pageIndex * 9 + index + 1;
+
+    await drawPhotoSlot(context, {
+      photo,
+      serial,
+      x,
+      y,
+      width: cellWidth,
+      frameHeight,
+      captionY: y + frameHeight + figureGap,
+      captionHeight,
+      kind
+    });
+  }
+
+  return canvas;
+}
+
+function drawAddressBox(context, x, y, width, height, address) {
+  const labelWidth = 18 * (1588 / 210);
+  context.strokeStyle = "#222";
+  context.lineWidth = 2;
+  context.strokeRect(x, y, width, height);
+  context.beginPath();
+  context.moveTo(x + labelWidth, y);
+  context.lineTo(x + labelWidth, y + height);
+  context.stroke();
+  context.fillStyle = "#111";
+  context.font = "700 20px system-ui, -apple-system, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText("住所", x + labelWidth / 2, y + height / 2);
+  context.font = "20px system-ui, -apple-system, sans-serif";
+  context.textAlign = "left";
+  context.fillText(address, x + labelWidth + 14, y + height / 2);
+}
+
+async function drawPhotoSlot(context, options) {
+  const { photo, serial, x, y, width, frameHeight, captionY, captionHeight, kind } = options;
+  context.strokeStyle = "#cfd8d3";
+  context.lineWidth = 2;
+  context.strokeRect(x, y, width, frameHeight);
+
+  if (photo?.src) {
+    try {
+      const image = await loadImage(photo.src);
+      drawCoverImage(context, image, x + 1, y + 1, width - 2, frameHeight - 2);
+    } catch (error) {
+      drawMissingPhoto(context, x, y, width, frameHeight);
+    }
+  }
+
+  if (kind === "correction") {
+    if (!photo) {
+      context.fillStyle = "#111";
+      context.font = "18px system-ui, -apple-system, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "top";
+      context.fillText(String(serial), x + width / 2, captionY + 4);
+      return;
+    }
+
+    context.strokeStyle = "#222";
+    context.lineWidth = 2;
+    context.strokeRect(x, captionY, width, captionHeight);
+    drawWrappedText(context, photo?.comment || `是正箇所 ${serial}`, x + 10, captionY + 12, width - 20, captionHeight - 18, {
+      font: "700 18px system-ui, -apple-system, sans-serif",
+      lineHeight: 23,
+      align: "center"
+    });
+    return;
+  }
+
+  context.fillStyle = "#111";
+  context.font = "18px system-ui, -apple-system, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  context.fillText(String(serial), x + width / 2, captionY + 4);
+}
+
+function drawCoverImage(context, image, x, y, width, height) {
+  const imageWidth = image.naturalWidth || image.width;
+  const imageHeight = image.naturalHeight || image.height;
+  const scale = Math.max(width / imageWidth, height / imageHeight);
+  const drawWidth = imageWidth * scale;
+  const drawHeight = imageHeight * scale;
+  const drawX = x + (width - drawWidth) / 2;
+  const drawY = y + (height - drawHeight) / 2;
+  context.save();
+  context.beginPath();
+  context.rect(x, y, width, height);
+  context.clip();
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  context.restore();
+}
+
+function drawMissingPhoto(context, x, y, width, height) {
+  context.fillStyle = "#fff";
+  context.fillRect(x + 1, y + 1, width - 2, height - 2);
+}
+
+function drawWrappedText(context, text, x, y, width, height, options) {
+  const chars = Array.from(String(text || ""));
+  const lines = [];
+  let line = "";
+  context.font = options.font;
+  for (const char of chars) {
+    const test = line + char;
+    if (context.measureText(test).width > width && line) {
+      lines.push(line);
+      line = char;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+
+  const lineHeight = options.lineHeight;
+  const visibleLines = lines.slice(0, Math.max(1, Math.floor(height / lineHeight)));
+  context.fillStyle = "#111";
+  context.textBaseline = "top";
+  context.textAlign = options.align || "left";
+  const textX = options.align === "center" ? x + width / 2 : x;
+  const startY = y + Math.max(0, (height - visibleLines.length * lineHeight) / 2);
+  visibleLines.forEach((item, index) => {
+    context.fillText(item, textX, startY + index * lineHeight);
+  });
 }
 
 function loadImage(src) {
