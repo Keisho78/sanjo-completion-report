@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=58").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=60").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -2166,6 +2166,8 @@ draftSelect.addEventListener("change", handleDraftSelectChange);
 homeDraftGrid.addEventListener("click", async (event) => {
   const deleteButton = event.target.closest("[data-delete-draft]");
   if (deleteButton) {
+    event.preventDefault();
+    event.stopPropagation();
     await deleteDraft(deleteButton.dataset.deleteDraft);
     showHome();
     return;

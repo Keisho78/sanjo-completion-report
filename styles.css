@@ -137,7 +137,7 @@ textarea {
   align-items: center;
   width: 100%;
   min-height: 100%;
-  padding: 13px 52px 13px 13px;
+  padding: 13px 66px 13px 13px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -147,19 +147,30 @@ textarea {
 .home-draft-delete {
   position: absolute;
   top: 50%;
-  right: 10px;
-  z-index: 1;
+  right: 5px;
+  z-index: 3;
+  isolation: isolate;
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border: 0;
-  border-radius: 12px;
-  background: #eef3f0;
+  border-radius: 0;
+  background: transparent;
   color: #4f5d58;
   font-size: 20px;
   line-height: 1;
+  touch-action: manipulation;
   transform: translateY(-50%);
+}
+
+.home-draft-delete::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  z-index: -1;
+  border-radius: 12px;
+  background: #eef3f0;
 }
 
 .document-stack {
