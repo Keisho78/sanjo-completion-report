@@ -66,6 +66,9 @@ const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
 const LEGACY_DRAFT_STORAGE_KEY = "sanjo_completion_report_draft";
 const DRAFTS_STORAGE_KEY = "sanjo_completion_report_drafts_v2";
 const ACTIVE_DRAFT_STORAGE_KEY = "sanjo_completion_report_active_draft";
+const ASSET_DB_NAME = "sanjo_completion_report_assets";
+const ASSET_DB_VERSION = 1;
+const ASSET_STORE_NAME = "assets";
 
 const form = document.querySelector("#reportForm");
 const saveStatus = document.querySelector("#saveStatus");
@@ -97,12 +100,14 @@ let planPointerMoved = false;
 let lastPlanPointerStart = 0;
 let activeDraftId = localStorage.getItem(ACTIVE_DRAFT_STORAGE_KEY) || "";
 let isApplyingDraft = false;
+let assetDbPromise = null;
+let assetPersistTimer = null;
 
 document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=38").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=40").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -168,6 +173,14 @@ function renderChecks() {
   `).join("");
 }
 
+async function initApp() {
+  renderChecks();
+  await loadDraft();
+  renderCompletionPhotos();
+  renderCorrectionPhotos();
+  renderFloorPlan();
+}
+
 async function appendPhotos(files, collection, render, decoratePhoto) {
   const list = [...files].filter((file) => file.type.startsWith("image/"));
   if (!list.length) return;
@@ -182,6 +195,9 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
         const photo = decoratePhoto ? decoratePhoto(basePhoto) : basePhoto;
         if (!photo.imageElement && basePhoto.imageElement) {
           setPhotoImageElement(photo, basePhoto.imageElement);
+        }
+        if (!photo.assetBlob && basePhoto.assetBlob) {
+          setPhotoBlob(photo, basePhoto.assetBlob);
         }
         addedPhotos.push(photo);
       } catch (error) {
@@ -198,6 +214,7 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
     render();
     saveStatus.textContent = `写真追加 ${addedPhotos.length}枚`;
     saveDraft();
+    await persistDraftAssets(activeDraftId);
   } finally {
     setPhotoInputsDisabled(false);
   }
@@ -214,8 +231,17 @@ async function readPhotoFile(file) {
     originalSize: file.size,
     compressedSize: compressed.size
   };
+  setPhotoBlob(photo, compressed.blob);
   await cachePhotoImage(photo);
   return photo;
+}
+
+function setPhotoBlob(photo, blob) {
+  Object.defineProperty(photo, "assetBlob", {
+    value: blob,
+    enumerable: false,
+    configurable: true
+  });
 }
 
 async function compressImageFile(file, maxEdge, quality) {
@@ -246,6 +272,7 @@ async function compressImageFile(file, maxEdge, quality) {
 
     const blob = await canvasToBlob(canvas, "image/jpeg", quality);
     return {
+      blob,
       src: URL.createObjectURL(blob),
       width,
       height,
@@ -261,20 +288,24 @@ function readPlanFile(file) {
   return new Promise((resolve) => {
     const image = new Image();
     image.onload = () => {
-      resolve({
+      const plan = {
         id: createId(),
         name: file.name,
         src,
         width: image.naturalWidth || image.width,
         height: image.naturalHeight || image.height
-      });
+      };
+      setPhotoBlob(plan, file);
+      resolve(plan);
     };
     image.onerror = () => {
-      resolve({
+      const plan = {
         id: createId(),
         name: file.name,
         src
-      });
+      };
+      setPhotoBlob(plan, file);
+      resolve(plan);
     };
     image.src = src;
   });
@@ -390,6 +421,7 @@ function saveDraft() {
     }
 
     saveDraftRecords(records);
+    scheduleAssetPersist(activeDraftId);
     renderDraftList(records);
     saveStatus.textContent = "保存済み";
     setTimeout(() => {
@@ -404,11 +436,22 @@ function getDraftDataForStorage() {
   const data = getFormData();
   return {
     ...data,
-    completionPhotos: data.completionPhotos.map(({ id, name }) => ({ id, name })),
-    correctionPhotos: data.correctionPhotos.map(({ id, name, comment }) => ({
+    completionPhotos: data.completionPhotos.map(({ id, name, width, height, originalSize, compressedSize }) => ({
       id,
       name,
-      comment
+      width,
+      height,
+      originalSize,
+      compressedSize
+    })),
+    correctionPhotos: data.correctionPhotos.map(({ id, name, comment, width, height, originalSize, compressedSize }) => ({
+      id,
+      name,
+      comment,
+      width,
+      height,
+      originalSize,
+      compressedSize
     })),
     floorPlan: data.floorPlan ? {
       id: data.floorPlan.id,
@@ -422,7 +465,7 @@ function getDraftDataForStorage() {
   };
 }
 
-function loadDraft() {
+async function loadDraft() {
   migrateLegacyDraft();
   const records = getDraftRecords();
   if (!records.length) {
@@ -435,7 +478,7 @@ function loadDraft() {
   const activeRecord = records.find((record) => record.id === activeDraftId) || sortDraftRecords(records)[0];
   activeDraftId = activeRecord.id;
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-  applyDraftData(activeRecord.data);
+  await applyDraftData(activeRecord.data);
   renderDraftList(records);
 }
 
@@ -462,51 +505,55 @@ function migrateLegacyDraft() {
   localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
 }
 
-function applyDraftData(data = {}) {
+async function applyDraftData(data = {}) {
   isApplyingDraft = true;
-  resetCurrentForm();
+  try {
+    resetCurrentForm();
 
-  Object.entries(data).forEach(([key, value]) => {
-    const field = form.elements[key];
-    if (field && typeof value === "string") field.value = value;
-  });
-
-  data.common?.forEach((row, index) => {
-    const field = form.querySelector(`[name="common_${index}"][value="${row.status}"]`);
-    if (field) field.checked = true;
-  });
-
-  data.inspections?.forEach((row, index) => {
-    const field = form.querySelector(`[name="inspection_${index}"][value="${row.status}"]`);
-    const memo = form.elements[`inspectionMemo_${index}`];
-    if (field) field.checked = true;
-    if (memo) memo.value = row.memo || "";
-  });
-
-  state.completionPhotos = (data.completionPhotos || []).filter((photo) => photo.src);
-  state.correctionPhotos = (data.correctionPhotos || []).filter((photo) => photo.src);
-  state.planMarkers = Array.isArray(data.planMarkers) ? data.planMarkers : [];
-  if (data.planView) {
-    state.planView = {
-      zoom: data.planView.zoom || 1,
-      panX: data.planView.panX || 0,
-      panY: data.planView.panY || 0
-    };
-  }
-
-  const outputs = Array.isArray(data.selectedOutputs)
-    ? data.selectedOutputs
-    : ["report", "plan", "correction", "completion"].filter((output) => data[`output_${output}`]);
-  if (outputs.length) {
-    outputInputs.forEach((input) => {
-      input.checked = outputs.includes(input.value);
+    Object.entries(data).forEach(([key, value]) => {
+      const field = form.elements[key];
+      if (field && typeof value === "string") field.value = value;
     });
-  }
 
-  renderCompletionPhotos();
-  renderCorrectionPhotos();
-  renderFloorPlan();
-  isApplyingDraft = false;
+    data.common?.forEach((row, index) => {
+      const field = form.querySelector(`[name="common_${index}"][value="${row.status}"]`);
+      if (field) field.checked = true;
+    });
+
+    data.inspections?.forEach((row, index) => {
+      const field = form.querySelector(`[name="inspection_${index}"][value="${row.status}"]`);
+      const memo = form.elements[`inspectionMemo_${index}`];
+      if (field) field.checked = true;
+      if (memo) memo.value = row.memo || "";
+    });
+
+    state.completionPhotos = await restoreDraftPhotos(activeDraftId, "completion", data.completionPhotos || []);
+    state.correctionPhotos = await restoreDraftPhotos(activeDraftId, "correction", data.correctionPhotos || []);
+    state.floorPlan = await restoreDraftFloorPlan(activeDraftId, data.floorPlan);
+    state.planMarkers = Array.isArray(data.planMarkers) ? data.planMarkers : [];
+    if (data.planView) {
+      state.planView = {
+        zoom: data.planView.zoom || 1,
+        panX: data.planView.panX || 0,
+        panY: data.planView.panY || 0
+      };
+    }
+
+    const outputs = Array.isArray(data.selectedOutputs)
+      ? data.selectedOutputs
+      : ["report", "plan", "correction", "completion"].filter((output) => data[`output_${output}`]);
+    if (outputs.length) {
+      outputInputs.forEach((input) => {
+        input.checked = outputs.includes(input.value);
+      });
+    }
+
+    renderCompletionPhotos();
+    renderCorrectionPhotos();
+    renderFloorPlan();
+  } finally {
+    isApplyingDraft = false;
+  }
 }
 
 function getDraftRecords() {
@@ -521,6 +568,152 @@ function getDraftRecords() {
 
 function saveDraftRecords(records) {
   localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(sortDraftRecords(records)));
+}
+
+function openAssetDb() {
+  if (!("indexedDB" in window)) return Promise.resolve(null);
+  if (assetDbPromise) return assetDbPromise;
+  assetDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(ASSET_DB_NAME, ASSET_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(ASSET_STORE_NAME)) {
+        const store = db.createObjectStore(ASSET_STORE_NAME, { keyPath: "key" });
+        store.createIndex("draftId", "draftId", { unique: false });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  }).catch((error) => {
+    console.warn("画像保存DBを開けませんでした", error);
+    return null;
+  });
+  return assetDbPromise;
+}
+
+async function persistDraftAssets(draftId) {
+  if (!draftId) return;
+  const db = await openAssetDb();
+  if (!db) return;
+  const assets = [
+    ...state.completionPhotos.map((photo) => ({ kind: "completion", item: photo })),
+    ...state.correctionPhotos.map((photo) => ({ kind: "correction", item: photo })),
+    ...(state.floorPlan ? [{ kind: "floorPlan", item: state.floorPlan }] : [])
+  ];
+  const activeKeys = assets.map(({ kind, item }) => assetKey(draftId, kind, item.id));
+
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(ASSET_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(ASSET_STORE_NAME);
+    assets.forEach(({ kind, item }) => {
+      const blob = item.assetBlob;
+      if (!blob) return;
+      store.put({
+        key: assetKey(draftId, kind, item.id),
+        draftId,
+        kind,
+        id: item.id,
+        name: item.name,
+        blob,
+        width: item.width,
+        height: item.height,
+        originalSize: item.originalSize,
+        compressedSize: item.compressedSize
+      });
+    });
+    const index = store.index("draftId");
+    const cursorRequest = index.openCursor(IDBKeyRange.only(draftId));
+    cursorRequest.onsuccess = () => {
+      const cursor = cursorRequest.result;
+      if (!cursor) return;
+      if (!activeKeys.includes(cursor.value.key)) cursor.delete();
+      cursor.continue();
+    };
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  }).catch((error) => {
+    console.warn("画像を保存できませんでした", error);
+  });
+}
+
+function scheduleAssetPersist(draftId = activeDraftId) {
+  clearTimeout(assetPersistTimer);
+  assetPersistTimer = setTimeout(() => {
+    persistDraftAssets(draftId);
+  }, 250);
+}
+
+async function restoreDraftPhotos(draftId, kind, photos) {
+  const restored = [];
+  for (const photo of photos) {
+    const asset = await getDraftAsset(draftId, kind, photo.id);
+    if (!asset?.blob) continue;
+    const restoredPhoto = {
+      ...photo,
+      name: photo.name || asset.name,
+      src: URL.createObjectURL(asset.blob),
+      width: photo.width || asset.width,
+      height: photo.height || asset.height,
+      originalSize: photo.originalSize || asset.originalSize,
+      compressedSize: photo.compressedSize || asset.compressedSize
+    };
+    setPhotoBlob(restoredPhoto, asset.blob);
+    await cachePhotoImage(restoredPhoto);
+    restored.push(restoredPhoto);
+  }
+  return restored;
+}
+
+async function restoreDraftFloorPlan(draftId, floorPlan) {
+  if (!floorPlan?.id) return null;
+  const asset = await getDraftAsset(draftId, "floorPlan", floorPlan.id);
+  if (!asset?.blob) return null;
+  const restoredPlan = {
+    ...floorPlan,
+    name: floorPlan.name || asset.name,
+    src: URL.createObjectURL(asset.blob),
+    width: floorPlan.width || asset.width,
+    height: floorPlan.height || asset.height
+  };
+  setPhotoBlob(restoredPlan, asset.blob);
+  return restoredPlan;
+}
+
+async function getDraftAsset(draftId, kind, id) {
+  const db = await openAssetDb();
+  if (!db || !draftId || !id) return null;
+  return new Promise((resolve) => {
+    const request = db.transaction(ASSET_STORE_NAME, "readonly")
+      .objectStore(ASSET_STORE_NAME)
+      .get(assetKey(draftId, kind, id));
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function deleteDraftAssets(draftId) {
+  const db = await openAssetDb();
+  if (!db || !draftId) return;
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(ASSET_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(ASSET_STORE_NAME);
+    const index = store.index("draftId");
+    const request = index.openCursor(IDBKeyRange.only(draftId));
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      cursor.delete();
+      cursor.continue();
+    };
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  }).catch((error) => {
+    console.warn("下書き画像を削除できませんでした", error);
+  });
+}
+
+function assetKey(draftId, kind, id) {
+  return `${draftId}:${kind}:${id}`;
 }
 
 function sortDraftRecords(records) {
@@ -583,17 +776,18 @@ function resetCurrentForm() {
   });
 }
 
-function handleDraftSelectChange(event) {
+async function handleDraftSelectChange(event) {
   event.stopPropagation();
   const nextDraftId = event.target.value;
   if (!nextDraftId || nextDraftId === activeDraftId) return;
 
   saveDraft();
+  await persistDraftAssets(activeDraftId);
   activeDraftId = nextDraftId;
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
   const record = getDraftRecords().find((item) => item.id === activeDraftId);
   if (record) {
-    applyDraftData(record.data);
+    await applyDraftData(record.data);
     renderDraftList();
     saveStatus.textContent = "下書き切替";
   }
@@ -1623,11 +1817,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-renderChecks();
-loadDraft();
-renderCompletionPhotos();
-renderCorrectionPhotos();
-renderFloorPlan();
+initApp();
 
 form.addEventListener("input", saveDraft);
 form.addEventListener("change", saveDraft);
@@ -1662,6 +1852,7 @@ floorPlanInput.addEventListener("change", async (event) => {
   };
   renderFloorPlan();
   saveDraft();
+  await persistDraftAssets(activeDraftId);
 });
 
 completionPreview.addEventListener("click", (event) => {
@@ -1725,13 +1916,25 @@ window.addEventListener("afterprint", () => {
   restoreDocumentTitle();
 });
 
+window.addEventListener("pagehide", () => {
+  saveDraft();
+  persistDraftAssets(activeDraftId);
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "hidden") return;
+  saveDraft();
+  persistDraftAssets(activeDraftId);
+});
+
 document.querySelector("#exportJsonButton").addEventListener("click", exportJson);
 
 draftSelect.addEventListener("input", handleDraftSelectChange);
 draftSelect.addEventListener("change", handleDraftSelectChange);
 
-newDraftButton.addEventListener("click", () => {
+newDraftButton.addEventListener("click", async () => {
   saveDraft();
+  await persistDraftAssets(activeDraftId);
   activeDraftId = createId();
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
   resetCurrentForm();
@@ -1741,7 +1944,7 @@ newDraftButton.addEventListener("click", () => {
   saveStatus.textContent = "新規下書き";
 });
 
-deleteDraftButton.addEventListener("click", () => {
+deleteDraftButton.addEventListener("click", async () => {
   const records = getDraftRecords();
   const activeRecord = records.find((record) => record.id === activeDraftId);
   if (!activeRecord) return;
@@ -1749,11 +1952,12 @@ deleteDraftButton.addEventListener("click", () => {
   if (!confirm(`「${title}」の下書きを削除しますか？`)) return;
 
   const remaining = records.filter((record) => record.id !== activeDraftId);
+  await deleteDraftAssets(activeDraftId);
   saveDraftRecords(remaining);
   if (remaining.length) {
     activeDraftId = sortDraftRecords(remaining)[0].id;
     localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-    applyDraftData(remaining.find((record) => record.id === activeDraftId)?.data);
+    await applyDraftData(remaining.find((record) => record.id === activeDraftId)?.data);
     saveStatus.textContent = "下書き削除";
   } else {
     activeDraftId = createId();
