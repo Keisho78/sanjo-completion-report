@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=49").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=50").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -998,7 +998,7 @@ function buildPreview() {
                   ${rows.map((row) => `
                     <tr>
                       <td>${escapeHtml(row.item)}</td>
-                      <td>${statusLabel(row.status)}</td>
+                      <td class="status-cell status-${escapeHtml(row.status)}">${statusLabel(row.status)}</td>
                     </tr>
                   `).join("")}
                 </tbody>
@@ -1024,7 +1024,7 @@ function buildPreview() {
                   <tr>
                     <td>${escapeHtml(row.place)}</td>
                     <td>${escapeHtml(row.item)}</td>
-                    <td>${inspectionLabel(row.status)}</td>
+                    <td class="mark-cell mark-${escapeHtml(row.status)}">${inspectionLabel(row.status)}</td>
                     <td>${escapeHtml(row.memo)}</td>
                   </tr>
                 `).join("")}
