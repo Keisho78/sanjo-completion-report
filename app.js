@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=57").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=58").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -823,7 +823,7 @@ function renderHomeDraftGrid(records) {
   if (!homeDraftGrid) return;
   homeDraftGrid.innerHTML = records.length
     ? records.map((record) => `
-      <article class="home-draft-card ${record.id === activeDraftId ? "is-active" : ""}">
+      <article class="home-draft-card">
         <button class="home-draft-open" type="button" data-open-draft="${record.id}">
           <span class="document-stack" aria-hidden="true"><span></span></span>
           <span class="draft-address">${escapeHtml(getDraftAddress(record))}</span>

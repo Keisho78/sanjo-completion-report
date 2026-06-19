@@ -130,12 +130,6 @@ textarea {
   box-shadow: none;
 }
 
-.home-draft-card.is-active {
-  border-color: var(--accent);
-  background: #f5fbf8;
-  box-shadow: inset 0 0 0 1px rgba(11, 107, 89, 0.3);
-}
-
 .home-draft-open {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
