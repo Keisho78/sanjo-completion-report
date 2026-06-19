@@ -66,6 +66,7 @@ const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
 const LEGACY_DRAFT_STORAGE_KEY = "sanjo_completion_report_draft";
 const DRAFTS_STORAGE_KEY = "sanjo_completion_report_drafts_v2";
 const ACTIVE_DRAFT_STORAGE_KEY = "sanjo_completion_report_active_draft";
+const OUTPUT_SNAPSHOT_STORAGE_KEY = "sanjo_completion_report_output_snapshot";
 const ASSET_DB_NAME = "sanjo_completion_report_assets";
 const ASSET_DB_VERSION = 1;
 const ASSET_STORE_NAME = "assets";
@@ -113,7 +114,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=61").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=63").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -463,6 +464,47 @@ function commitActiveFormField() {
 function prepareFormForOutput() {
   commitActiveFormField();
   saveDraft();
+  saveOutputSnapshot();
+}
+
+function saveOutputSnapshot() {
+  try {
+    const data = getFormData();
+    sessionStorage.setItem(OUTPUT_SNAPSHOT_STORAGE_KEY, JSON.stringify({
+      draftId: activeDraftId,
+      data: {
+        propertyName: data.propertyName || "",
+        staffName: data.staffName || "",
+        inspectionDate: data.inspectionDate || ""
+      }
+    }));
+  } catch (error) {
+    // Session storage may be unavailable in private or constrained browser modes.
+  }
+}
+
+function restoreOutputSnapshotIfNeeded() {
+  let snapshot;
+  try {
+    snapshot = JSON.parse(sessionStorage.getItem(OUTPUT_SNAPSHOT_STORAGE_KEY) || "null");
+  } catch (error) {
+    sessionStorage.removeItem(OUTPUT_SNAPSHOT_STORAGE_KEY);
+    return;
+  }
+
+  if (!snapshot?.data || snapshot.draftId !== activeDraftId) return;
+  let restored = false;
+  ["propertyName", "staffName", "inspectionDate"].forEach((name) => {
+    const field = form.elements[name];
+    const value = snapshot.data[name];
+    if (!field || field.value || !value) return;
+    field.value = value;
+    restored = true;
+  });
+
+  if (!restored) return;
+  saveDraft();
+  renderDraftList();
 }
 
 function saveDraft() {
@@ -1222,6 +1264,7 @@ async function exportFloorPlanPdf() {
 
 async function exportSelectedPdfDirect() {
   if (!buildPreview()) return false;
+  saveOutputSnapshot();
 
   saveStatus.textContent = "PDF作成中";
   const data = getFormData();
@@ -1303,6 +1346,7 @@ async function exportSelectedPdfDirect() {
   }
 
   const pdfBytes = createImagePdf(pages);
+  saveOutputSnapshot();
   downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${getOutputFileName()}.pdf`);
   saveStatus.textContent = "PDF保存";
   if (previewDialog.open) previewDialog.close();
@@ -2157,17 +2201,27 @@ window.addEventListener("beforeprint", () => {
 window.addEventListener("afterprint", () => {
   document.body.classList.remove("is-printing");
   restoreDocumentTitle();
+  restoreOutputSnapshotIfNeeded();
 });
 
 window.addEventListener("pagehide", () => {
+  saveOutputSnapshot();
   saveDraft();
   persistDraftAssets(activeDraftId);
 });
 
+window.addEventListener("pageshow", () => {
+  restoreOutputSnapshotIfNeeded();
+});
+
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "hidden") return;
-  saveDraft();
-  persistDraftAssets(activeDraftId);
+  if (document.visibilityState === "hidden") {
+    saveOutputSnapshot();
+    saveDraft();
+    persistDraftAssets(activeDraftId);
+    return;
+  }
+  restoreOutputSnapshotIfNeeded();
 });
 
 document.querySelector("#exportJsonButton").addEventListener("click", exportJson);
