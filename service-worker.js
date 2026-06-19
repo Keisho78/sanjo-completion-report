@@ -1,9 +1,9 @@
-const CACHE_NAME = "sanjo-completion-report-v33";
+const CACHE_NAME = "sanjo-completion-report-v34";
 const APP_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=33",
-  "./app.js?v=33",
+  "./styles.css?v=34",
+  "./app.js?v=34",
   "./manifest.webmanifest",
   "./icons/icon-180.png?v=18",
   "./icons/icon-192.png?v=18",

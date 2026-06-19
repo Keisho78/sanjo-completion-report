@@ -100,7 +100,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=33").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=34").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1401,20 +1401,11 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
 });
 
 document.querySelector("#printButton").addEventListener("click", async () => {
-  const selectedOutputs = getSelectedOutputs();
-  if (selectedOutputs.includes("plan") && state.floorPlan?.src) {
-    try {
-      await exportSelectedPdfDirect();
-    } catch (error) {
-      saveStatus.textContent = "PDF作成エラー";
-    }
-    return;
+  try {
+    await exportSelectedPdfDirect();
+  } catch (error) {
+    saveStatus.textContent = "PDF作成エラー";
   }
-  if (!buildPreview()) return;
-  setPrintDocumentTitle();
-  document.body.classList.add("is-printing");
-  if (previewDialog.open) previewDialog.close();
-  window.print();
 });
 
 window.addEventListener("beforeprint", () => {
