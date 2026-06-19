@@ -59,7 +59,9 @@ const state = {
 };
 
 const DEFAULT_DOCUMENT_TITLE = document.title;
-const PHOTO_STATUS_BATCH_SIZE = 50;
+const PHOTO_STATUS_BATCH_SIZE = 10;
+const PHOTO_MAX_EDGE = 1600;
+const PHOTO_JPEG_QUALITY = 0.78;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
 const LEGACY_DRAFT_STORAGE_KEY = "sanjo_completion_report_draft";
 const DRAFTS_STORAGE_KEY = "sanjo_completion_report_drafts_v2";
@@ -100,7 +102,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=34").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=35").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -175,7 +177,8 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
     const addedPhotos = [];
     for (let index = 0; index < list.length; index += 1) {
       try {
-        const photo = readPhotoFile(list[index]);
+        saveStatus.textContent = `写真圧縮 ${index + 1}/${list.length}`;
+        const photo = await readPhotoFile(list[index]);
         addedPhotos.push(decoratePhoto ? decoratePhoto(photo) : photo);
       } catch (error) {
         console.warn("写真を追加できませんでした", error);
@@ -196,12 +199,55 @@ async function appendPhotos(files, collection, render, decoratePhoto) {
   }
 }
 
-function readPhotoFile(file) {
+async function readPhotoFile(file) {
+  const compressed = await compressImageFile(file, PHOTO_MAX_EDGE, PHOTO_JPEG_QUALITY);
   return {
     id: createId(),
     name: file.name,
-    src: URL.createObjectURL(file)
+    src: compressed.src,
+    width: compressed.width,
+    height: compressed.height,
+    originalSize: file.size,
+    compressedSize: compressed.size
   };
+}
+
+async function compressImageFile(file, maxEdge, quality) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    if (!sourceWidth || !sourceHeight) {
+      return {
+        src: await blobToDataUrl(file),
+        width: sourceWidth,
+        height: sourceHeight,
+        size: file.size
+      };
+    }
+
+    const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: false });
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    return {
+      src: await blobToDataUrl(blob),
+      width,
+      height,
+      size: blob.size
+    };
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function readPlanFile(file) {
@@ -918,6 +964,18 @@ function canvasToJpegBytes(canvas) {
     canvas.toBlob((blob) => {
       blob.arrayBuffer().then((buffer) => resolve(new Uint8Array(buffer)));
     }, "image/jpeg", 0.92);
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+      reject(new Error("画像圧縮に失敗しました"));
+    }, type, quality);
   });
 }
 
