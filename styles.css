@@ -1,15 +1,22 @@
 :root {
   color-scheme: light;
-  --bg: #f4f6f5;
+  --bg: #eef3f1;
+  --bg-deep: #dfe9e5;
   --panel: #ffffff;
-  --ink: #17201d;
-  --muted: #63706b;
-  --line: #d9e0dc;
-  --accent: #146c5b;
-  --accent-strong: #0f5648;
+  --panel-soft: #f8fbfa;
+  --ink: #14201d;
+  --muted: #687874;
+  --line: #d8e2de;
+  --line-strong: #bccbc5;
+  --accent: #11745f;
+  --accent-strong: #0b4f43;
+  --accent-soft: #e7f3ef;
+  --blue: #315d7c;
+  --amber: #b7791f;
   --danger: #b42318;
-  --soft: #eaf3ef;
-  --shadow: 0 10px 28px rgba(20, 42, 35, 0.1);
+  --soft: #eaf4f0;
+  --shadow: 0 14px 34px rgba(25, 54, 48, 0.12);
+  --shadow-soft: 0 7px 20px rgba(25, 54, 48, 0.08);
 }
 
 * {
@@ -22,10 +29,14 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0) 220px),
+    linear-gradient(135deg, var(--bg), var(--bg-deep));
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans JP", sans-serif;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -36,9 +47,9 @@ textarea {
 }
 
 .app-shell {
-  width: min(100%, 760px);
+  width: min(100%, 820px);
   margin: 0 auto;
-  padding: 12px 12px 96px;
+  padding: 12px 14px 96px;
 }
 
 .app-header {
@@ -49,10 +60,11 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 -14px 14px;
+  margin: 0 -14px 16px;
   padding: 14px;
-  background: rgba(244, 246, 245, 0.94);
+  background: rgba(248, 251, 250, 0.92);
   border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 24px rgba(18, 40, 35, 0.08);
   backdrop-filter: blur(12px);
 }
 
@@ -65,7 +77,7 @@ textarea {
 .home-view,
 .editor-view {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .home-toolbar,
@@ -77,20 +89,25 @@ textarea {
 }
 
 .home-toolbar {
-  padding: 4px 2px 2px;
+  padding: 6px 2px 2px;
+}
+
+.home-toolbar h2 {
+  font-size: 22px;
+  letter-spacing: 0;
 }
 
 .home-add-button {
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--accent);
   color: #fff;
-  font-size: 30px;
+  font-size: 29px;
   line-height: 1;
-  box-shadow: 0 10px 22px rgba(20, 108, 91, 0.24);
+  box-shadow: 0 12px 24px rgba(17, 116, 95, 0.26);
 }
 
 .home-draft-grid {
@@ -104,16 +121,16 @@ textarea {
   display: grid;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(188, 203, 197, 0.86);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .home-draft-card.is-active {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent), 0 4px 14px rgba(20, 42, 35, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(17, 116, 95, 0.6), var(--shadow-soft);
 }
 
 .home-draft-open {
@@ -121,9 +138,9 @@ textarea {
   gap: 9px;
   width: 100%;
   min-height: 100%;
-  padding: 14px 10px 12px;
+  padding: 16px 10px 13px;
   border: 0;
-  background: transparent;
+  background: linear-gradient(180deg, #fff, #f9fbfa);
   color: inherit;
   text-align: center;
 }
@@ -138,8 +155,8 @@ textarea {
   height: 30px;
   place-items: center;
   border: 0;
-  border-radius: 999px;
-  background: rgba(23, 32, 29, 0.72);
+  border-radius: 8px;
+  background: rgba(20, 32, 29, 0.72);
   color: #fff;
   font-size: 20px;
   line-height: 1;
@@ -159,10 +176,10 @@ textarea {
   position: absolute;
   width: 46px;
   height: 58px;
-  border: 2px solid #20312c;
+  border: 1.5px solid #20312c;
   border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 3px 0 rgba(20, 42, 35, 0.08);
+  background: linear-gradient(180deg, #fff, #f4f8f6);
+  box-shadow: 0 5px 12px rgba(20, 42, 35, 0.12);
 }
 
 .document-stack::before {
@@ -193,12 +210,12 @@ textarea {
   right: 8px;
   height: 2px;
   border-radius: 999px;
-  background: #20312c;
+  background: var(--blue);
 }
 
 .document-stack span::before {
   top: 16px;
-  box-shadow: 0 9px 0 #20312c;
+  box-shadow: 0 9px 0 var(--blue);
 }
 
 .document-stack span::after {
@@ -207,7 +224,7 @@ textarea {
 
 .draft-address {
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -221,9 +238,9 @@ textarea {
   display: grid;
   min-height: 220px;
   place-items: center;
-  border: 1px dashed #aec2ba;
+  border: 1.5px dashed #9bb9af;
   border-radius: 8px;
-  background: var(--soft);
+  background: rgba(234, 244, 240, 0.86);
   color: var(--muted);
   font-size: 13px;
   text-align: center;
@@ -231,12 +248,12 @@ textarea {
 
 .editor-toolbar button {
   min-height: 40px;
-  padding: 0 12px;
+  padding: 0 13px;
   font-size: 13px;
 }
 
 .eyebrow {
-  margin: 0 0 2px;
+  margin: 0 0 3px;
   color: var(--accent);
   font-size: 12px;
   font-weight: 700;
@@ -250,8 +267,9 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: 24px;
+  font-size: 25px;
   line-height: 1.2;
+  letter-spacing: 0;
 }
 
 h2 {
@@ -262,18 +280,20 @@ h2 {
 .save-status {
   flex: 0 0 auto;
   min-width: 68px;
-  padding: 7px 10px;
+  padding: 7px 11px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--panel);
-  color: var(--muted);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--accent-strong);
   font-size: 12px;
+  font-weight: 700;
   text-align: center;
+  box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
 }
 
 .report-form {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .property-panel .section-title {
@@ -291,28 +311,30 @@ h2 {
   z-index: 9;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-  padding: 5px;
-  border: 1px solid var(--line);
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid rgba(188, 203, 197, 0.82);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 6px 18px rgba(20, 42, 35, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
   backdrop-filter: blur(12px);
 }
 
 .mode-tab {
-  min-height: 38px;
+  min-height: 40px;
   padding: 0 6px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--muted);
   font-size: 13px;
+  box-shadow: none;
 }
 
 .mode-tab.is-active {
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 7px 15px rgba(17, 116, 95, 0.24);
 }
 
 .page-panel {
@@ -337,6 +359,7 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   box-shadow: none;
+  background: linear-gradient(180deg, #fff, #f8fbfa);
 }
 
 .page-intro h2 {
@@ -349,14 +372,15 @@ h2 {
   padding: 0 12px;
   border-color: var(--accent);
   color: var(--accent-strong);
+  background: #fff;
 }
 
 .panel {
-  padding: 14px;
-  border: 1px solid var(--line);
+  padding: 15px;
+  border: 1px solid rgba(188, 203, 197, 0.76);
   border-radius: 8px;
   background: var(--panel);
-  box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .section-title {
@@ -393,11 +417,21 @@ textarea,
 select {
   width: 100%;
   min-height: 48px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 11px 12px;
-  background: #fff;
+  background: #fbfdfc;
   color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgba(17, 116, 95, 0.14);
+  background: #fff;
 }
 
 textarea {
@@ -420,10 +454,10 @@ textarea {
 .inspection-row {
   display: grid;
   gap: 9px;
-  padding: 10px;
+  padding: 11px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfb;
+  background: var(--panel-soft);
 }
 
 .common-row {
@@ -456,12 +490,14 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .segmented input:checked + span {
   border-color: var(--accent);
-  background: var(--soft);
+  background: var(--accent-soft);
   color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(17, 116, 95, 0.35);
 }
 
 .legend {
@@ -477,7 +513,7 @@ textarea {
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--panel-soft);
 }
 
 .inspection-meta {
@@ -506,10 +542,12 @@ textarea {
   place-items: center;
   min-height: 104px;
   margin-bottom: 12px;
-  padding: 18px;
-  border: 2px dashed #aec2ba;
+  padding: 19px;
+  border: 1.5px dashed #94b5aa;
   border-radius: 8px;
-  background: var(--soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.24)),
+    var(--soft);
   text-align: center;
 }
 
@@ -523,7 +561,7 @@ textarea {
 
 .upload-box strong {
   color: var(--accent-strong);
-  font-size: 16px;
+  font-size: 16.5px;
 }
 
 .upload-box span {
@@ -538,7 +576,7 @@ textarea {
 .photo-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 
 .photo-tile {
@@ -547,7 +585,8 @@ textarea {
   aspect-ratio: 1;
   min-height: 0;
   border-radius: 8px;
-  background: #dde4e0;
+  background: #dfe8e4;
+  box-shadow: 0 4px 12px rgba(20, 42, 35, 0.1);
   content-visibility: auto;
   contain-intrinsic-size: 84px 84px;
 }
@@ -562,12 +601,12 @@ textarea {
 .photo-tile button,
 .correction-card .remove-photo {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 5px;
+  right: 5px;
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.62);
   color: #fff;
 }
@@ -575,7 +614,7 @@ textarea {
 .correction-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .correction-card {
@@ -586,7 +625,8 @@ textarea {
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfb;
+  background: var(--panel-soft);
+  box-shadow: 0 5px 14px rgba(20, 42, 35, 0.07);
   content-visibility: auto;
   contain-intrinsic-size: 190px;
 }
@@ -632,7 +672,7 @@ textarea {
 
 .symbol-chip.is-active {
   border-color: var(--accent);
-  background: var(--soft);
+  background: var(--accent-soft);
   color: var(--accent-strong);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -655,9 +695,10 @@ textarea {
   height: min(62vh, 430px);
   min-height: 320px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: #fdfefe;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
   touch-action: pan-x pan-y;
   cursor: crosshair;
   -webkit-overflow-scrolling: touch;
@@ -727,6 +768,10 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px 10px;
   margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
   color: var(--muted);
   font-size: 11px;
   line-height: 1.25;
@@ -750,10 +795,10 @@ textarea {
   gap: 10px;
   align-items: center;
   min-height: 58px;
-  padding: 10px;
-  border: 1px solid var(--line);
+  padding: 11px;
+  border: 1px solid rgba(188, 203, 197, 0.84);
   border-radius: 8px;
-  background: #fbfcfb;
+  background: var(--panel-soft);
 }
 
 .output-options input {
@@ -778,17 +823,28 @@ textarea {
 
 button {
   min-height: 46px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: linear-gradient(180deg, #fff, #f7faf9);
   color: var(--ink);
   font-weight: 700;
+  box-shadow: 0 3px 10px rgba(20, 42, 35, 0.06);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:focus-visible {
+  outline: 3px solid rgba(17, 116, 95, 0.2);
+  outline-offset: 2px;
 }
 
 button.primary {
   border-color: var(--accent);
-  background: var(--accent);
+  background: linear-gradient(180deg, #14846d, var(--accent));
   color: #fff;
+  box-shadow: 0 9px 18px rgba(17, 116, 95, 0.22);
 }
 
 .preview-dialog {

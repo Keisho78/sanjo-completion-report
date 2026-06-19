@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=44").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=45").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
