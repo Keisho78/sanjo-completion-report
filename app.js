@@ -107,7 +107,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=40").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=41").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -639,8 +639,14 @@ async function persistDraftAssets(draftId) {
 function scheduleAssetPersist(draftId = activeDraftId) {
   clearTimeout(assetPersistTimer);
   assetPersistTimer = setTimeout(() => {
+    assetPersistTimer = null;
     persistDraftAssets(draftId);
   }, 250);
+}
+
+function cancelScheduledAssetPersist() {
+  clearTimeout(assetPersistTimer);
+  assetPersistTimer = null;
 }
 
 async function restoreDraftPhotos(draftId, kind, photos) {
@@ -782,6 +788,7 @@ async function handleDraftSelectChange(event) {
   if (!nextDraftId || nextDraftId === activeDraftId) return;
 
   saveDraft();
+  cancelScheduledAssetPersist();
   await persistDraftAssets(activeDraftId);
   activeDraftId = nextDraftId;
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
@@ -1934,6 +1941,7 @@ draftSelect.addEventListener("change", handleDraftSelectChange);
 
 newDraftButton.addEventListener("click", async () => {
   saveDraft();
+  cancelScheduledAssetPersist();
   await persistDraftAssets(activeDraftId);
   activeDraftId = createId();
   localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
