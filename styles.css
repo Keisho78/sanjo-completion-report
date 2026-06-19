@@ -1301,6 +1301,37 @@ button.primary {
     padding: 2mm;
   }
 
+  .force-plan-rotate .plan-page.is-landscape-plan {
+    page: plan-portrait !important;
+    width: 210mm;
+    min-height: 297mm;
+    height: 297mm;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .force-plan-rotate .plan-page.is-landscape-plan h2 {
+    top: 2mm;
+    left: 2mm;
+  }
+
+  .force-plan-rotate .plan-page.is-landscape-plan .plan-print-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+  }
+
+  .force-plan-rotate .plan-page.is-landscape-plan .plan-print-legend {
+    right: 4mm;
+    bottom: 3mm;
+    left: 4mm;
+    z-index: 2;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    font-size: 5.4px;
+  }
+
   .print-page:last-child {
     page-break-after: auto;
     break-after: auto;

@@ -100,7 +100,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=31").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=32").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1127,11 +1127,13 @@ function setPrintDocumentTitle() {
 function restoreDocumentTitle() {
   document.title = DEFAULT_DOCUMENT_TITLE;
   printPageStyle.textContent = "";
+  document.body.classList.remove("force-plan-rotate");
 }
 
 function setPrintPageSizeHint() {
   const selectedOutputs = getSelectedOutputs();
   if (selectedOutputs.length === 1 && selectedOutputs[0] === "plan" && state.floorPlan?.src) {
+    document.body.classList.remove("force-plan-rotate");
     printPageStyle.textContent = `
       @media print {
         @page {
@@ -1143,7 +1145,16 @@ function setPrintPageSizeHint() {
     return;
   }
 
+  document.body.classList.toggle(
+    "force-plan-rotate",
+    selectedOutputs.includes("plan") && selectedOutputs.length > 1 && isIosPrintBrowser()
+  );
   printPageStyle.textContent = "";
+}
+
+function isIosPrintBrowser() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 function statusLabel(value) {
