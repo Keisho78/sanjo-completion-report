@@ -931,7 +931,7 @@ button.primary {
 }
 
 .print-section {
-  margin-top: 2.2mm;
+  margin-top: 2mm;
 }
 
 .print-row {
@@ -945,9 +945,9 @@ button.primary {
   display: flex;
   flex-direction: column;
   height: 297mm;
-  padding: 8mm 9mm;
+  padding: 7mm 8mm;
   border-color: #dfe7e2;
-  font-size: 8px;
+  font-size: 9px;
   overflow: hidden;
 }
 
@@ -955,27 +955,27 @@ button.primary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 13mm;
-  margin: 0 0 3mm;
-  padding: 0 4mm;
+  min-height: 11mm;
+  margin: 0 0 2.5mm;
+  padding: 0 3.5mm;
   border-radius: 1.5mm;
   background: #0b4f43;
   color: #fff;
-  font-size: 18px;
+  font-size: 17px;
   letter-spacing: 0;
   text-align: left;
 }
 
 .report-page h2::after {
   content: "三条工務店";
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 700;
   opacity: 0.88;
 }
 
 .report-meta {
   display: grid;
-  grid-template-columns: 1.5fr 0.8fr 0.8fr 0.7fr;
+  grid-template-columns: 1.7fr 0.7fr 0.8fr 0.6fr;
   overflow: hidden;
   border: 1px solid #9fb4ac;
   border-radius: 1.2mm;
@@ -985,7 +985,7 @@ button.primary {
 .report-meta div {
   display: grid;
   grid-template-rows: auto 1fr;
-  min-height: 10mm;
+  min-height: 12mm;
   border-right: 1px solid #d2ddd8;
 }
 
@@ -994,23 +994,23 @@ button.primary {
 }
 
 .report-meta strong {
-  padding: 1mm 1.6mm 0;
+  padding: 1.1mm 1.6mm 0;
   color: #0b4f43;
-  font-size: 7px;
+  font-size: 8px;
 }
 
 .report-meta span {
-  padding: 0 1.5mm 1mm;
+  padding: 0.2mm 1.6mm 1.2mm;
   color: #111;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   word-break: break-word;
 }
 
 .report-top-grid {
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: 3mm;
+  grid-template-columns: 1.28fr 0.72fr;
+  gap: 2.5mm;
   align-items: stretch;
   flex: 0 0 auto;
 }
@@ -1043,10 +1043,10 @@ button.primary {
 }
 
 .print-box {
-  min-height: 27mm;
-  max-height: 27mm;
+  min-height: 24mm;
+  max-height: 24mm;
   overflow: hidden;
-  padding: 1.6mm;
+  padding: 1.5mm;
   border: 1px solid #b8c8c0;
   border-radius: 1mm;
   background: #fbfdfc;
@@ -1056,15 +1056,15 @@ button.primary {
 .print-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 7.3px;
-  line-height: 1.18;
+  font-size: 8.6px;
+  line-height: 1.22;
   table-layout: fixed;
 }
 
 .print-table th,
 .print-table td {
   border: 1px solid #aebfb7;
-  padding: 0.9mm 1mm;
+  padding: 0.78mm 0.9mm;
   vertical-align: top;
   word-break: break-word;
 }
@@ -1080,21 +1080,23 @@ button.primary {
 }
 
 .report-page .print-section h3 {
-  display: inline-grid;
-  min-height: 4.8mm;
+  display: grid;
+  width: 100%;
+  min-height: 5.2mm;
   align-items: center;
-  margin: 0 0 1.4mm;
+  margin: 0 0 1.2mm;
   padding: 0 2mm;
-  border-left: 1.2mm solid #0b4f43;
+  border-left: 1mm solid #0b4f43;
+  border-radius: 0.8mm;
   background: #edf4f1;
   color: #0b4f43;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
 }
 
 .common-print-table td:last-child,
 .inspection-print-table td:nth-child(3) {
-  width: 8mm;
+  width: 10mm;
   color: #0b4f43;
   font-weight: 700;
   text-align: center;
@@ -1103,35 +1105,35 @@ button.primary {
 
 .inspection-print-table th:first-child,
 .inspection-print-table td:first-child {
-  width: 13mm;
+  width: 16mm;
 }
 
 .inspection-print-table th:nth-child(2),
 .inspection-print-table td:nth-child(2) {
-  width: 29mm;
+  width: 32mm;
 }
 
 .common-print-table td:last-child {
-  width: 11mm;
+  width: 13mm;
 }
 
 .report-note {
   display: grid;
   grid-template-columns: 0.9fr 1.5fr;
-  gap: 5mm;
-  margin-top: 2.5mm;
-  padding: 1.8mm 2mm;
+  gap: 4mm;
+  margin-top: 2mm;
+  padding: 1.5mm 2mm;
   border: 1px solid #d4ddd8;
   border-radius: 1.2mm;
   background: #fafcfb;
-  font-size: 7px;
-  line-height: 1.35;
+  font-size: 7.8px;
+  line-height: 1.32;
 }
 
 .report-note h3 {
-  margin: 0 0 0.8mm;
+  margin: 0 0 0.6mm;
   color: #0b4f43;
-  font-size: 7.5px;
+  font-size: 8.2px;
   line-height: 1.25;
 }
 
