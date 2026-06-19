@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=43").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=44").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -823,15 +823,19 @@ function renderHomeDraftGrid(records) {
   if (!homeDraftGrid) return;
   homeDraftGrid.innerHTML = records.length
     ? records.map((record) => `
-      <button
-        class="home-draft-card ${record.id === activeDraftId ? "is-active" : ""}"
-        type="button"
-        data-open-draft="${record.id}"
-      >
-        <span class="document-stack" aria-hidden="true"><span></span></span>
-        <span class="draft-address">${escapeHtml(getDraftAddress(record))}</span>
-        <span class="draft-updated">${escapeHtml(formatDraftDate(record.updatedAt) || "未保存")}</span>
-      </button>
+      <article class="home-draft-card ${record.id === activeDraftId ? "is-active" : ""}">
+        <button class="home-draft-open" type="button" data-open-draft="${record.id}">
+          <span class="document-stack" aria-hidden="true"><span></span></span>
+          <span class="draft-address">${escapeHtml(getDraftAddress(record))}</span>
+          <span class="draft-updated">${escapeHtml(formatDraftDate(record.updatedAt) || "未保存")}</span>
+        </button>
+        <button
+          class="home-draft-delete"
+          type="button"
+          data-delete-draft="${record.id}"
+          aria-label="${escapeHtml(getDraftAddress(record))}を削除"
+        >×</button>
+      </article>
     `).join("")
     : `<div class="home-empty">＋ボタンから物件を追加</div>`;
 }
@@ -922,6 +926,36 @@ async function createNewDraft() {
   showEditor();
   form.elements.propertyName?.focus();
   saveStatus.textContent = "新規下書き";
+}
+
+async function deleteDraft(draftId) {
+  const records = getDraftRecords();
+  const targetRecord = records.find((record) => record.id === draftId);
+  if (!targetRecord) return false;
+
+  const title = String(targetRecord.data?.propertyName || "").trim() || "無題の物件";
+  if (!confirm(`「${title}」の下書きを削除しますか？`)) return false;
+
+  const deletingActiveDraft = draftId === activeDraftId;
+  const remaining = records.filter((record) => record.id !== draftId);
+  await deleteDraftAssets(draftId);
+  saveDraftRecords(remaining);
+
+  if (deletingActiveDraft) {
+    if (remaining.length) {
+      activeDraftId = sortDraftRecords(remaining)[0].id;
+      localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+      await applyDraftData(remaining.find((record) => record.id === activeDraftId)?.data);
+    } else {
+      activeDraftId = createId();
+      localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
+      resetCurrentForm();
+    }
+  }
+
+  renderDraftList(remaining);
+  saveStatus.textContent = "下書き削除";
+  return true;
 }
 
 function buildPreview() {
@@ -2071,6 +2105,13 @@ draftSelect.addEventListener("input", handleDraftSelectChange);
 draftSelect.addEventListener("change", handleDraftSelectChange);
 
 homeDraftGrid.addEventListener("click", async (event) => {
+  const deleteButton = event.target.closest("[data-delete-draft]");
+  if (deleteButton) {
+    await deleteDraft(deleteButton.dataset.deleteDraft);
+    showHome();
+    return;
+  }
+
   const card = event.target.closest("[data-open-draft]");
   if (!card) return;
   await openDraft(card.dataset.openDraft);
@@ -2086,28 +2127,8 @@ backHomeButton.addEventListener("click", async () => {
 });
 
 deleteDraftButton.addEventListener("click", async () => {
-  const records = getDraftRecords();
-  const activeRecord = records.find((record) => record.id === activeDraftId);
-  if (!activeRecord) return;
-  const title = String(activeRecord.data?.propertyName || "").trim() || "無題の物件";
-  if (!confirm(`「${title}」の下書きを削除しますか？`)) return;
-
-  const remaining = records.filter((record) => record.id !== activeDraftId);
-  await deleteDraftAssets(activeDraftId);
-  saveDraftRecords(remaining);
-  if (remaining.length) {
-    activeDraftId = sortDraftRecords(remaining)[0].id;
-    localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-    await applyDraftData(remaining.find((record) => record.id === activeDraftId)?.data);
-    saveStatus.textContent = "下書き削除";
-  } else {
-    activeDraftId = createId();
-    localStorage.setItem(ACTIVE_DRAFT_STORAGE_KEY, activeDraftId);
-    resetCurrentForm();
-    saveStatus.textContent = "下書き削除";
-  }
-  renderDraftList();
-  showHome();
+  const deleted = await deleteDraft(activeDraftId);
+  if (deleted) showHome();
 });
 
 document.querySelector("#resetButton").addEventListener("click", () => {

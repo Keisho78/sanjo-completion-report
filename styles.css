@@ -100,21 +100,49 @@ textarea {
 }
 
 .home-draft-card {
+  position: relative;
   display: grid;
-  gap: 9px;
   min-width: 0;
-  padding: 14px 10px 12px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  text-align: center;
   box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
 }
 
 .home-draft-card.is-active {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent), 0 4px 14px rgba(20, 42, 35, 0.06);
+}
+
+.home-draft-open {
+  display: grid;
+  gap: 9px;
+  width: 100%;
+  min-height: 100%;
+  padding: 14px 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+}
+
+.home-draft-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(23, 32, 29, 0.72);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .document-stack {
