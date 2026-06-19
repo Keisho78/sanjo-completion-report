@@ -1289,10 +1289,12 @@ button.primary {
 
 .photo-page h2::after,
 .correction-page h2::after {
-  content: none;
+  content: none !important;
+  display: none !important;
 }
 
 .print-page-date {
+  display: inline-block;
   margin-left: auto;
   font-size: 9px;
   font-weight: 700;
@@ -1672,6 +1674,18 @@ button.primary {
     padding: 10mm;
     border: 0;
     box-shadow: none;
+  }
+
+  .photo-page h2::after,
+  .correction-page h2::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .photo-page .print-page-date,
+  .correction-page .print-page-date {
+    display: inline-block !important;
+    color: #fff !important;
   }
 
   .plan-page.is-landscape-plan {

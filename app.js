@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=56").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=57").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1131,7 +1131,11 @@ function renderPlanPrintPage(data) {
 }
 
 function renderPrintDate(date) {
-  return `確認日 ${escapeHtml(date || "")}`;
+  return escapeHtml(getPrintDateText(date));
+}
+
+function getPrintDateText(date) {
+  return `確認日 ${String(date || "").trim()}`;
 }
 
 function getPlanPrintFrameStyle(plan) {
@@ -1232,6 +1236,7 @@ async function exportSelectedPdfDirect() {
     if (page.classList.contains("correction-page")) {
       const canvas = await createPhotoPdfCanvas({
         title: `是正箇所${correctionPages.length > 1 ? ` ${correctionPageIndex + 1}` : ""}`,
+        dateText: getPrintDateText(data.inspectionDate),
         photos: correctionPages[correctionPageIndex] || [],
         pageIndex: correctionPageIndex,
         kind: "correction",
@@ -1252,6 +1257,7 @@ async function exportSelectedPdfDirect() {
     if (page.classList.contains("photo-page")) {
       const canvas = await createPhotoPdfCanvas({
         title: `完工写真${completionPages.length > 1 ? ` ${completionPageIndex + 1}` : ""}`,
+        dateText: getPrintDateText(data.inspectionDate),
         photos: completionPages[completionPageIndex] || [],
         pageIndex: completionPageIndex,
         kind: "completion"
@@ -1311,11 +1317,12 @@ async function createFloorPlanPdfCanvas() {
   context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   drawPlanMarkersForPdf(context, drawX, drawY, drawWidth, drawHeight);
   drawPlanLegendForPdf(context, pageWidth, pageHeight);
+  drawPlanDateForPdf(context, getPrintDateText(getFormData().inspectionDate), pageWidth);
 
   return { canvas };
 }
 
-async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = "" }) {
+async function createPhotoPdfCanvas({ title, dateText, photos, pageIndex, kind, address = "" }) {
   const pageWidth = 1588;
   const pageHeight = 2246;
   const mm = pageWidth / 210;
@@ -1334,6 +1341,7 @@ async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = 
 
   drawPdfPageHeader(context, {
     title,
+    dateText,
     x: margin,
     y: margin,
     width: pageWidth - margin * 2,
@@ -1379,7 +1387,7 @@ async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = 
   return canvas;
 }
 
-function drawPdfPageHeader(context, { title, x, y, width, height }) {
+function drawPdfPageHeader(context, { title, dateText, x, y, width, height }) {
   context.fillStyle = "#0b4f43";
   context.fillRect(x, y, width, height);
   context.fillStyle = "#fff";
@@ -1389,7 +1397,26 @@ function drawPdfPageHeader(context, { title, x, y, width, height }) {
   context.fillText(title, x + 28, y + height / 2);
   context.font = "700 18px system-ui, -apple-system, sans-serif";
   context.textAlign = "right";
-  context.fillText("三条工務店", x + width - 28, y + height / 2);
+  context.fillText(dateText || "確認日", x + width - 28, y + height / 2);
+}
+
+function drawPlanDateForPdf(context, dateText, pageWidth) {
+  if (!dateText) return;
+  const paddingX = 18;
+  const boxHeight = 44;
+  context.font = "700 24px system-ui, -apple-system, sans-serif";
+  const boxWidth = context.measureText(dateText).width + paddingX * 2;
+  const x = pageWidth - boxWidth - 32;
+  const y = 28;
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  context.fillRect(x, y, boxWidth, boxHeight);
+  context.strokeStyle = "rgba(34, 34, 34, 0.35)";
+  context.lineWidth = 2;
+  context.strokeRect(x, y, boxWidth, boxHeight);
+  context.fillStyle = "#111";
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  context.fillText(dateText, x + boxWidth - paddingX, y + boxHeight / 2);
 }
 
 function drawAddressBox(context, x, y, width, height, address) {
