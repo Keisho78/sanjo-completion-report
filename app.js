@@ -72,6 +72,7 @@ const ASSET_STORE_NAME = "assets";
 
 const form = document.querySelector("#reportForm");
 const saveStatus = document.querySelector("#saveStatus");
+const photoRestoreNotice = document.querySelector("#photoRestoreNotice");
 const commonChecks = document.querySelector("#commonChecks");
 const inspectionChecks = document.querySelector("#inspectionChecks");
 const completionInput = document.querySelector("#completionPhotos");
@@ -106,12 +107,13 @@ let activeDraftId = localStorage.getItem(ACTIVE_DRAFT_STORAGE_KEY) || "";
 let isApplyingDraft = false;
 let assetDbPromise = null;
 let assetPersistTimer = null;
+let missingDraftPhotoCount = 0;
 
 document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=42").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=43").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -336,21 +338,24 @@ function setPhotoInputsDisabled(disabled) {
 }
 
 function renderCompletionPhotos() {
-  completionPreview.innerHTML = state.completionPhotos.length
-    ? state.completionPhotos.map((photo) => `
+  const photos = state.completionPhotos.filter((photo) => photo?.src);
+  completionPreview.innerHTML = photos.length
+    ? photos.map((photo) => `
       <div class="photo-tile">
-        <img src="${photo.src}" alt="${escapeHtml(photo.name)}" loading="lazy" decoding="async">
+        <img src="${photo.src}" alt="${escapeHtml(photo.name)}" data-photo-id="${escapeHtml(photo.id)}" loading="lazy" decoding="async">
         <button type="button" data-remove-completion="${photo.id}" aria-label="写真を削除">×</button>
       </div>
     `).join("")
     : `<p class="empty-state">完工写真はまだ追加されていません。</p>`;
+  bindPhotoLoadErrorHandlers(completionPreview, "completion");
 }
 
 function renderCorrectionPhotos() {
-  correctionList.innerHTML = state.correctionPhotos.length
-    ? state.correctionPhotos.map((photo) => `
+  const photos = state.correctionPhotos.filter((photo) => photo?.src);
+  correctionList.innerHTML = photos.length
+    ? photos.map((photo) => `
         <article class="correction-card" data-correction-id="${photo.id}">
-          <img src="${photo.src}" alt="${escapeHtml(photo.name)}" loading="lazy" decoding="async">
+          <img src="${photo.src}" alt="${escapeHtml(photo.name)}" data-photo-id="${escapeHtml(photo.id)}" loading="lazy" decoding="async">
           <button class="remove-photo" type="button" data-remove-correction="${photo.id}" aria-label="写真を削除">×</button>
           <label class="field">
             <span>是正依頼文</span>
@@ -359,6 +364,41 @@ function renderCorrectionPhotos() {
         </article>
       `).join("")
     : `<p class="empty-state">是正写真はまだ追加されていません。</p>`;
+  bindPhotoLoadErrorHandlers(correctionList, "correction");
+}
+
+function bindPhotoLoadErrorHandlers(root, kind) {
+  root.querySelectorAll("img[data-photo-id]").forEach((image) => {
+    image.addEventListener("error", () => {
+      removeBrokenPhoto(kind, image.dataset.photoId);
+    }, { once: true });
+  });
+}
+
+function removeBrokenPhoto(kind, id) {
+  if (!id) return;
+  const key = kind === "completion" ? "completionPhotos" : "correctionPhotos";
+  const photo = state[key].find((item) => item.id === id);
+  if (!photo) return;
+  revokePhotoUrl(photo);
+  state[key] = state[key].filter((item) => item.id !== id);
+  missingDraftPhotoCount += 1;
+  updatePhotoRestoreNotice();
+  if (kind === "completion") renderCompletionPhotos();
+  if (kind === "correction") renderCorrectionPhotos();
+  saveDraft();
+}
+
+function updatePhotoRestoreNotice() {
+  if (!photoRestoreNotice) return;
+  if (!missingDraftPhotoCount) {
+    photoRestoreNotice.hidden = true;
+    photoRestoreNotice.textContent = "";
+    return;
+  }
+  photoRestoreNotice.hidden = false;
+  photoRestoreNotice.textContent = `保存済み写真のうち${missingDraftPhotoCount}枚を復元できませんでした。該当写真は再追加してください。`;
+  saveStatus.textContent = "写真を再追加";
 }
 
 function renderFloorPlan() {
@@ -452,9 +492,11 @@ function saveDraft() {
 
 function getDraftDataForStorage() {
   const data = getFormData();
+  const completionPhotos = validPhotos(data.completionPhotos);
+  const correctionPhotos = validPhotos(data.correctionPhotos);
   return {
     ...data,
-    completionPhotos: data.completionPhotos.map(({ id, name, width, height, originalSize, compressedSize }) => ({
+    completionPhotos: completionPhotos.map(({ id, name, width, height, originalSize, compressedSize }) => ({
       id,
       name,
       width,
@@ -462,7 +504,7 @@ function getDraftDataForStorage() {
       originalSize,
       compressedSize
     })),
-    correctionPhotos: data.correctionPhotos.map(({ id, name, comment, width, height, originalSize, compressedSize }) => ({
+    correctionPhotos: correctionPhotos.map(({ id, name, comment, width, height, originalSize, compressedSize }) => ({
       id,
       name,
       comment,
@@ -527,6 +569,8 @@ async function applyDraftData(data = {}) {
   isApplyingDraft = true;
   try {
     resetCurrentForm();
+    missingDraftPhotoCount = 0;
+    updatePhotoRestoreNotice();
 
     Object.entries(data).forEach(([key, value]) => {
       const field = form.elements[key];
@@ -569,8 +613,14 @@ async function applyDraftData(data = {}) {
     renderCompletionPhotos();
     renderCorrectionPhotos();
     renderFloorPlan();
+    updatePhotoRestoreNotice();
   } finally {
     isApplyingDraft = false;
+  }
+
+  if (missingDraftPhotoCount) {
+    saveDraft();
+    updatePhotoRestoreNotice();
   }
 }
 
@@ -671,7 +721,10 @@ async function restoreDraftPhotos(draftId, kind, photos) {
   const restored = [];
   for (const photo of photos) {
     const asset = await getDraftAsset(draftId, kind, photo.id);
-    if (!asset?.blob) continue;
+    if (!asset?.blob) {
+      missingDraftPhotoCount += 1;
+      continue;
+    }
     const restoredPhoto = {
       ...photo,
       name: photo.name || asset.name,
@@ -682,7 +735,12 @@ async function restoreDraftPhotos(draftId, kind, photos) {
       compressedSize: photo.compressedSize || asset.compressedSize
     };
     setPhotoBlob(restoredPhoto, asset.blob);
-    await cachePhotoImage(restoredPhoto);
+    const image = await cachePhotoImage(restoredPhoto);
+    if (!image) {
+      revokePhotoUrl(restoredPhoto);
+      missingDraftPhotoCount += 1;
+      continue;
+    }
     restored.push(restoredPhoto);
   }
   return restored;
@@ -801,6 +859,8 @@ function formatDraftDate(value) {
 
 function resetCurrentForm() {
   form.reset();
+  missingDraftPhotoCount = 0;
+  updatePhotoRestoreNotice();
   state.completionPhotos.forEach(revokePhotoUrl);
   state.correctionPhotos.forEach(revokePhotoUrl);
   revokePhotoUrl(state.floorPlan);
@@ -866,6 +926,8 @@ async function createNewDraft() {
 
 function buildPreview() {
   const data = getFormData();
+  data.completionPhotos = validPhotos(data.completionPhotos);
+  data.correctionPhotos = validPhotos(data.correctionPhotos);
   const selectedOutputs = getSelectedOutputs();
   if (!selectedOutputs.length) {
     reportPreview.innerHTML = "";
@@ -995,7 +1057,12 @@ function buildPreview() {
 }
 
 function photoPages(photos) {
-  return photos.length ? chunk(photos, 9) : [];
+  const valid = validPhotos(photos);
+  return valid.length ? chunk(valid, 9) : [];
+}
+
+function validPhotos(photos) {
+  return Array.isArray(photos) ? photos.filter((photo) => photo?.src) : [];
 }
 
 function renderPlanPrintPage(data) {

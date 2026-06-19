@@ -292,6 +292,17 @@ h2 {
   gap: 12px;
 }
 
+.restore-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #f0c36d;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #6f5200;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .page-intro {
   display: flex;
   align-items: center;
