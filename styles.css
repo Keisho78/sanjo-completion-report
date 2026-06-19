@@ -1002,7 +1002,7 @@ button.primary {
 .report-meta span {
   padding: 0.1mm 1.4mm 1mm;
   color: #111;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   word-break: break-word;
 }
@@ -1021,7 +1021,7 @@ button.primary {
 
 .report-page > .compact-section {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
 }
@@ -1034,17 +1034,17 @@ button.primary {
 }
 
 .inspection-columns {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
 .inspection-print-table {
-  height: 100%;
+  height: auto;
 }
 
 .print-box {
-  min-height: 20mm;
-  max-height: 20mm;
+  min-height: 21mm;
+  max-height: 21mm;
   overflow: hidden;
   padding: 1.5mm;
   border: 1px solid #b8c8c0;
@@ -1056,15 +1056,15 @@ button.primary {
 .print-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9.8px;
-  line-height: 1.14;
+  font-size: 11.2px;
+  line-height: 1.18;
   table-layout: fixed;
 }
 
 .print-table th,
 .print-table td {
   border: 1px solid #aebfb7;
-  padding: 0.55mm 0.75mm;
+  padding: 0.66mm 0.85mm;
   vertical-align: top;
   word-break: break-word;
 }
@@ -1096,7 +1096,7 @@ button.primary {
 
 .common-print-table td:last-child,
 .inspection-print-table td:nth-child(3) {
-  width: 12mm;
+  width: 13mm;
   color: #0b4f43;
   font-weight: 700;
   text-align: center;
@@ -1104,12 +1104,12 @@ button.primary {
 }
 
 .status-cell {
-  font-size: 9.6px;
+  font-size: 11.2px;
   line-height: 1;
 }
 
 .mark-cell {
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -1123,12 +1123,17 @@ button.primary {
 
 .inspection-print-table th:first-child,
 .inspection-print-table td:first-child {
-  width: 15mm;
+  width: 16mm;
 }
 
 .inspection-print-table th:nth-child(2),
 .inspection-print-table td:nth-child(2) {
-  width: 31mm;
+  width: 34mm;
+}
+
+.inspection-print-table th:nth-child(4),
+.inspection-print-table td:nth-child(4) {
+  width: 24mm;
 }
 
 .common-print-table td:last-child {
@@ -1144,14 +1149,14 @@ button.primary {
   border: 1px solid #d4ddd8;
   border-radius: 1.2mm;
   background: #fafcfb;
-  font-size: 7.7px;
+  font-size: 8.4px;
   line-height: 1.25;
 }
 
 .report-note h3 {
   margin: 0 0 0.6mm;
   color: #0b4f43;
-  font-size: 8.2px;
+  font-size: 8.8px;
   line-height: 1.25;
 }
 
