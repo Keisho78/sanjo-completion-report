@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=47").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=48").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1313,6 +1313,7 @@ async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = 
   const pageHeight = 2246;
   const mm = pageWidth / 210;
   const margin = 10 * mm;
+  const headerHeight = 12 * mm;
   const canvas = document.createElement("canvas");
   canvas.width = pageWidth;
   canvas.height = pageHeight;
@@ -1320,24 +1321,26 @@ async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = 
 
   context.fillStyle = "#fff";
   context.fillRect(0, 0, pageWidth, pageHeight);
-  context.strokeStyle = "#cfd8d3";
+  context.strokeStyle = "#d4ddd8";
   context.lineWidth = 2;
   context.strokeRect(1, 1, pageWidth - 2, pageHeight - 2);
 
-  context.fillStyle = "#111";
-  context.font = "700 34px system-ui, -apple-system, sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "top";
-  context.fillText(title, pageWidth / 2, margin);
+  drawPdfPageHeader(context, {
+    title,
+    x: margin,
+    y: margin,
+    width: pageWidth - margin * 2,
+    height: headerHeight
+  });
 
-  let gridTop = margin + 58;
+  let gridTop = margin + headerHeight + 24;
   if (kind === "correction" && address) {
-    drawAddressBox(context, margin, gridTop, pageWidth - margin * 2, 38, address);
-    gridTop += 58;
+    drawAddressBox(context, margin, gridTop, pageWidth - margin * 2, 42, address);
+    gridTop += 60;
   }
 
   const gap = (kind === "correction" ? 4 : 5) * mm;
-  const gridHeight = (kind === "correction" && address ? 235 : 246) * mm;
+  const gridHeight = pageHeight - gridTop - margin;
   const gridWidth = pageWidth - margin * 2;
   const cellWidth = (gridWidth - gap * 2) / 3;
   const cellHeight = (gridHeight - gap * 2) / 3;
@@ -1369,28 +1372,48 @@ async function createPhotoPdfCanvas({ title, photos, pageIndex, kind, address = 
   return canvas;
 }
 
+function drawPdfPageHeader(context, { title, x, y, width, height }) {
+  context.fillStyle = "#0b4f43";
+  context.fillRect(x, y, width, height);
+  context.fillStyle = "#fff";
+  context.font = "700 36px system-ui, -apple-system, sans-serif";
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillText(title, x + 28, y + height / 2);
+  context.font = "700 18px system-ui, -apple-system, sans-serif";
+  context.textAlign = "right";
+  context.fillText("三条工務店", x + width - 28, y + height / 2);
+}
+
 function drawAddressBox(context, x, y, width, height, address) {
   const labelWidth = 18 * (1588 / 210);
-  context.strokeStyle = "#222";
+  context.fillStyle = "#fbfdfc";
+  context.fillRect(x, y, width, height);
+  context.strokeStyle = "#9fb4ac";
   context.lineWidth = 2;
   context.strokeRect(x, y, width, height);
+  context.fillStyle = "#edf4f1";
+  context.fillRect(x, y, labelWidth, height);
   context.beginPath();
   context.moveTo(x + labelWidth, y);
   context.lineTo(x + labelWidth, y + height);
   context.stroke();
-  context.fillStyle = "#111";
+  context.fillStyle = "#0b4f43";
   context.font = "700 20px system-ui, -apple-system, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText("住所", x + labelWidth / 2, y + height / 2);
-  context.font = "20px system-ui, -apple-system, sans-serif";
+  context.fillStyle = "#111";
+  context.font = "700 20px system-ui, -apple-system, sans-serif";
   context.textAlign = "left";
   context.fillText(address, x + labelWidth + 14, y + height / 2);
 }
 
 async function drawPhotoSlot(context, options) {
   const { photo, serial, x, y, width, frameHeight, captionY, captionHeight, kind } = options;
-  context.strokeStyle = "#cfd8d3";
+  context.fillStyle = "#fafcfb";
+  context.fillRect(x, y, width, frameHeight);
+  context.strokeStyle = "#b8c8c0";
   context.lineWidth = 2;
   context.strokeRect(x, y, width, frameHeight);
 
@@ -1413,7 +1436,9 @@ async function drawPhotoSlot(context, options) {
       return;
     }
 
-    context.strokeStyle = "#222";
+    context.fillStyle = "#fbfdfc";
+    context.fillRect(x, captionY, width, captionHeight);
+    context.strokeStyle = "#9fb4ac";
     context.lineWidth = 2;
     context.strokeRect(x, captionY, width, captionHeight);
     drawWrappedText(context, photo?.comment || `是正箇所 ${serial}`, x + 10, captionY + 12, width - 20, captionHeight - 18, {
@@ -1425,7 +1450,7 @@ async function drawPhotoSlot(context, options) {
   }
 
   context.fillStyle = "#111";
-  context.font = "18px system-ui, -apple-system, sans-serif";
+  context.font = "700 18px system-ui, -apple-system, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "top";
   context.fillText(String(serial), x + width / 2, captionY + 4);
