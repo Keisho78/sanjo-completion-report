@@ -113,7 +113,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=55").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=56").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -962,6 +962,7 @@ function buildPreview() {
   const data = getFormData();
   data.completionPhotos = validPhotos(data.completionPhotos);
   data.correctionPhotos = validPhotos(data.correctionPhotos);
+  const printDate = renderPrintDate(data.inspectionDate);
   const selectedOutputs = getSelectedOutputs();
   if (!selectedOutputs.length) {
     reportPreview.innerHTML = "";
@@ -1054,7 +1055,7 @@ function buildPreview() {
     ${planPage}
     ${correctionPages.map((photos, pageIndex) => `
       <section class="print-page correction-page">
-        <h2>是正箇所${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}</h2>
+        <h2>是正箇所${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}<span class="print-page-date">${printDate}</span></h2>
         ${pageIndex === 0 ? `<div class="correction-address"><strong>住所</strong><span>${escapeHtml(data.propertyName || "")}</span></div>` : ""}
         <div class="print-photo-grid correction-grid ${pageIndex === 0 ? "has-correction-address" : ""}">
           ${renderNinePhotoSlots(photos, pageIndex, (photo, serial) => `
@@ -1068,7 +1069,7 @@ function buildPreview() {
     `).join("")}
     ${completionPages.map((photos, pageIndex) => `
       <section class="print-page photo-page">
-        <h2>完工写真${completionPages.length > 1 ? ` ${pageIndex + 1}` : ""}</h2>
+        <h2>完工写真${completionPages.length > 1 ? ` ${pageIndex + 1}` : ""}<span class="print-page-date">${printDate}</span></h2>
         <div class="print-photo-grid">
           ${renderNinePhotoSlots(photos, pageIndex, (photo, serial) => `
             <figure class="print-photo">
@@ -1102,9 +1103,11 @@ function validPhotos(photos) {
 function renderPlanPrintPage(data) {
   const frameStyle = getPlanPrintFrameStyle(data.floorPlan);
   const orientation = getPlanOrientation(data.floorPlan);
+  const printDate = renderPrintDate(data.inspectionDate);
   return `
     <section class="print-page plan-page is-${orientation}-plan">
       <h2>間取図面</h2>
+      <div class="print-page-date plan-print-date">${printDate}</div>
       <div class="plan-print-frame" style="${frameStyle}">
         <img src="${data.floorPlan.src}" alt="">
         ${data.planMarkers.map((marker) => `
@@ -1125,6 +1128,10 @@ function renderPlanPrintPage(data) {
       </div>
     </section>
   `;
+}
+
+function renderPrintDate(date) {
+  return `確認日 ${escapeHtml(date || "")}`;
 }
 
 function getPlanPrintFrameStyle(plan) {
