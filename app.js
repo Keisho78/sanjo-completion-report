@@ -100,7 +100,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=32").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=33").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -764,6 +764,65 @@ async function exportFloorPlanPdf() {
     return false;
   }
 
+  const { canvas } = await createFloorPlanPdfCanvas();
+  const jpegBytes = await canvasToJpegBytes(canvas);
+  const pdfBytes = createImagePdf([{
+    imageBytes: jpegBytes,
+    imageWidth: canvas.width,
+    imageHeight: canvas.height,
+    pageWidth: 841.89,
+    pageHeight: 595.28
+  }]);
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  downloadBlob(blob, `${getOutputFileName()}_間取図.pdf`);
+  saveStatus.textContent = "PDF保存";
+  return true;
+}
+
+async function exportSelectedPdfDirect() {
+  if (!buildPreview()) return false;
+
+  saveStatus.textContent = "PDF作成中";
+  const pages = [];
+  const previewPages = [...reportPreview.querySelectorAll(".print-page")];
+  for (const page of previewPages) {
+    if (page.classList.contains("plan-page") && state.floorPlan?.src) {
+      const { canvas } = await createFloorPlanPdfCanvas();
+      const imageBytes = await canvasToJpegBytes(canvas);
+      pages.push({
+        imageBytes,
+        imageWidth: canvas.width,
+        imageHeight: canvas.height,
+        pageWidth: 841.89,
+        pageHeight: 595.28
+      });
+      continue;
+    }
+
+    const canvas = await renderPrintPageToCanvas(page);
+    const imageBytes = await canvasToJpegBytes(canvas);
+    pages.push({
+      imageBytes,
+      imageWidth: canvas.width,
+      imageHeight: canvas.height,
+      pageWidth: 595.28,
+      pageHeight: 841.89
+    });
+  }
+
+  if (!pages.length) {
+    saveStatus.textContent = "出力内容なし";
+    return false;
+  }
+
+  const pdfBytes = createImagePdf(pages);
+  downloadBlob(new Blob([pdfBytes], { type: "application/pdf" }), `${getOutputFileName()}.pdf`);
+  saveStatus.textContent = "PDF保存";
+  if (previewDialog.open) previewDialog.close();
+  return true;
+}
+
+async function createFloorPlanPdfCanvas() {
   const image = await loadImage(state.floorPlan.src);
   const canvas = document.createElement("canvas");
   canvas.width = 2480;
@@ -784,12 +843,7 @@ async function exportFloorPlanPdf() {
   drawPlanMarkersForPdf(context, drawX, drawY, drawWidth, drawHeight);
   drawPlanLegendForPdf(context, pageWidth, pageHeight);
 
-  const jpegBytes = await canvasToJpegBytes(canvas);
-  const pdfBytes = createSingleImagePdf(jpegBytes, canvas.width, canvas.height, 841.89, 595.28);
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  downloadBlob(blob, `${getOutputFileName()}_間取図.pdf`);
-  saveStatus.textContent = "PDF保存";
-  return true;
+  return { canvas };
 }
 
 function loadImage(src) {
@@ -867,7 +921,79 @@ function canvasToJpegBytes(canvas) {
   });
 }
 
-function createSingleImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeight) {
+async function renderPrintPageToCanvas(pageElement) {
+  const width = 794;
+  const height = 1123;
+  const scale = 2;
+  const clone = pageElement.cloneNode(true);
+  clone.style.width = `${width}px`;
+  clone.style.height = `${height}px`;
+  clone.style.minHeight = `${height}px`;
+  clone.style.margin = "0";
+  clone.style.border = "0";
+  clone.style.boxShadow = "none";
+  clone.style.boxSizing = "border-box";
+  await inlineCloneImages(clone);
+
+  const css = getSerializableStyles();
+  const html = new XMLSerializer().serializeToString(clone);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <style>
+            ${css}
+            .print-page { margin: 0 !important; border: 0 !important; box-shadow: none !important; }
+          </style>
+          ${html}
+        </div>
+      </foreignObject>
+    </svg>
+  `;
+  const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+async function inlineCloneImages(root) {
+  const images = [...root.querySelectorAll("img")];
+  await Promise.all(images.map(async (image) => {
+    if (!image.src || image.src.startsWith("data:")) return;
+    try {
+      const blob = await fetch(image.src).then((response) => response.blob());
+      image.src = await blobToDataUrl(blob);
+    } catch (error) {
+      image.removeAttribute("src");
+    }
+  }));
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function getSerializableStyles() {
+  return [...document.styleSheets].map((sheet) => {
+    try {
+      return [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
+    } catch (error) {
+      return "";
+    }
+  }).join("\n");
+}
+
+function createImagePdf(pages) {
   const encoder = new TextEncoder();
   const chunks = [];
   const offsets = [0];
@@ -889,27 +1015,34 @@ function createSingleImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pa
   addText("<< /Type /Catalog /Pages 2 0 R >>");
   endObject();
   startObject(2);
-  addText("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
-  endObject();
-  startObject(3);
-  addText(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
-  endObject();
-  startObject(4);
-  addText(`<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);
-  addBytes(imageBytes);
-  addText("\nendstream");
-  endObject();
-  startObject(5);
-  const content = `q ${pageWidth} 0 0 ${pageHeight} 0 0 cm /Im0 Do Q`;
-  addText(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  addText(`<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 3} 0 R`).join(" ")}] /Count ${pages.length} >>`);
   endObject();
 
+  pages.forEach((page, index) => {
+    const pageObject = 3 + index * 3;
+    const imageObject = pageObject + 1;
+    const contentObject = pageObject + 2;
+    startObject(pageObject);
+    addText(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${page.pageWidth} ${page.pageHeight}] /Resources << /XObject << /Im${index} ${imageObject} 0 R >> >> /Contents ${contentObject} 0 R >>`);
+    endObject();
+    startObject(imageObject);
+    addText(`<< /Type /XObject /Subtype /Image /Width ${page.imageWidth} /Height ${page.imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.imageBytes.length} >>\nstream\n`);
+    addBytes(page.imageBytes);
+    addText("\nendstream");
+    endObject();
+    startObject(contentObject);
+    const content = `q ${page.pageWidth} 0 0 ${page.pageHeight} 0 0 cm /Im${index} Do Q`;
+    addText(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+    endObject();
+  });
+
   const xrefOffset = offset;
-  addText(`xref\n0 6\n0000000000 65535 f \n`);
-  for (let index = 1; index <= 5; index += 1) {
+  const objectCount = 2 + pages.length * 3;
+  addText(`xref\n0 ${objectCount + 1}\n0000000000 65535 f \n`);
+  for (let index = 1; index <= objectCount; index += 1) {
     addText(`${String(offsets[index]).padStart(10, "0")} 00000 n \n`);
   }
-  addText(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  addText(`trailer\n<< /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
 
   const result = new Uint8Array(offset);
   let cursor = 0;
@@ -1267,10 +1400,14 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
   previewDialog.close();
 });
 
-document.querySelector("#printButton").addEventListener("click", () => {
+document.querySelector("#printButton").addEventListener("click", async () => {
   const selectedOutputs = getSelectedOutputs();
-  if (selectedOutputs.length === 1 && selectedOutputs[0] === "plan") {
-    exportFloorPlanPdf();
+  if (selectedOutputs.includes("plan") && state.floorPlan?.src) {
+    try {
+      await exportSelectedPdfDirect();
+    } catch (error) {
+      saveStatus.textContent = "PDF作成エラー";
+    }
     return;
   }
   if (!buildPreview()) return;
