@@ -100,7 +100,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=30").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=31").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1256,18 +1256,17 @@ document.querySelector("#closePreviewButton").addEventListener("click", () => {
   previewDialog.close();
 });
 
-document.querySelector("#printButton").addEventListener("click", async () => {
+document.querySelector("#printButton").addEventListener("click", () => {
   const selectedOutputs = getSelectedOutputs();
   if (selectedOutputs.length === 1 && selectedOutputs[0] === "plan") {
-    await exportFloorPlanPdf();
+    exportFloorPlanPdf();
     return;
   }
   if (!buildPreview()) return;
   setPrintDocumentTitle();
   document.body.classList.add("is-printing");
-  requestAnimationFrame(() => {
-    setTimeout(() => window.print(), 120);
-  });
+  if (previewDialog.open) previewDialog.close();
+  window.print();
 });
 
 window.addEventListener("beforeprint", () => {
