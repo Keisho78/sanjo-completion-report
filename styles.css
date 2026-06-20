@@ -588,7 +588,59 @@ textarea {
 }
 
 .correction-upload {
-  margin-top: 18px;
+  margin-top: 14px;
+}
+
+.segmented-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.segmented-field legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #eef5f2;
+}
+
+.segmented-control label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.segmented-control input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.segmented-control span {
+  position: relative;
+  z-index: 1;
+}
+
+.segmented-control label:has(input:checked) {
+  background: #fff;
+  color: var(--accent-strong);
+  box-shadow: 0 4px 16px rgba(29, 60, 50, 0.12);
 }
 
 .photo-grid {

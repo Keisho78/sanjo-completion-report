@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/icon-192.png?v=18">
     <link rel="apple-touch-icon" href="./icons/icon-180.png?v=18">
-    <link rel="stylesheet" href="./styles.css?v=63">
+    <link rel="stylesheet" href="./styles.css?v=64">
   </head>
   <body>
     <main class="app-shell">
@@ -207,21 +207,34 @@
         <div class="page-panel" data-page-panel="correction" hidden>
           <section class="panel page-intro">
             <div>
-              <p class="eyebrow">是正箇所作成</p>
-              <h2>是正写真と依頼文を作成</h2>
+              <p class="eyebrow" data-correction-mode-label="eyebrow">是正箇所作成</p>
+              <h2 data-correction-mode-label="introTitle">是正写真と依頼文を作成</h2>
             </div>
-            <button type="button" data-output-only="correction">是正箇所だけ出力</button>
+            <button type="button" data-output-only="correction" data-correction-mode-label="outputButton">是正箇所だけ出力</button>
           </section>
 
           <section class="panel">
           <div class="section-title">
-            <h2>是正箇所</h2>
-            <span>写真・依頼文</span>
+            <h2 data-correction-mode-label="sectionTitle">是正箇所</h2>
+            <span data-correction-mode-label="sectionBadge">写真・依頼文</span>
           </div>
+          <fieldset class="segmented-field correction-mode-field">
+            <legend>写真ページの種類</legend>
+            <div class="segmented-control">
+              <label>
+                <input type="radio" name="correctionReportType" value="correction" checked>
+                <span>是正</span>
+              </label>
+              <label>
+                <input type="radio" name="correctionReportType" value="status">
+                <span>現状報告</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="upload-box correction-upload">
             <input id="correctionPhotos" type="file" accept="image/*" multiple>
-            <strong>是正箇所の写真を追加</strong>
-            <span>写真アルバムから選び、依頼文を作成できます</span>
+            <strong data-correction-mode-label="uploadTitle">是正箇所の写真を追加</strong>
+            <span data-correction-mode-label="uploadHelp">写真アルバムから選び、依頼文を作成できます</span>
           </label>
           <div id="correctionList" class="correction-list"></div>
           </section>
@@ -258,8 +271,8 @@
             <label>
               <input type="checkbox" name="output_correction" value="correction" checked>
               <span>
-                <strong>是正箇所</strong>
-                <small>住所・是正写真・依頼文</small>
+                <strong data-correction-mode-label="outputOptionTitle">是正箇所</strong>
+                <small data-correction-mode-label="outputOptionHelp">住所・是正写真・依頼文</small>
               </span>
             </label>
             <label>
@@ -294,6 +307,6 @@
 
     <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
-    <script src="./app.js?v=63"></script>
+    <script src="./app.js?v=64"></script>
   </body>
 </html>

@@ -63,6 +63,40 @@ const PHOTO_STATUS_BATCH_SIZE = 10;
 const PHOTO_MAX_EDGE = 1600;
 const PHOTO_JPEG_QUALITY = 0.78;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
+const CORRECTION_REPORT_MODES = {
+  correction: {
+    eyebrow: "是正箇所作成",
+    introTitle: "是正写真と依頼文を作成",
+    outputButton: "是正箇所だけ出力",
+    sectionTitle: "是正箇所",
+    sectionBadge: "写真・依頼文",
+    uploadTitle: "是正箇所の写真を追加",
+    uploadHelp: "写真アルバムから選び、依頼文を作成できます",
+    textareaLabel: "是正依頼文",
+    textareaPlaceholder: "是正依頼文を入力",
+    emptyState: "是正写真はまだ追加されていません。",
+    outputOptionTitle: "是正箇所",
+    outputOptionHelp: "住所・是正写真・依頼文",
+    printTitle: "是正箇所",
+    defaultCaption: "是正箇所"
+  },
+  status: {
+    eyebrow: "現状報告作成",
+    introTitle: "現状写真と報告文を作成",
+    outputButton: "現状報告だけ出力",
+    sectionTitle: "現状報告",
+    sectionBadge: "写真・報告文",
+    uploadTitle: "現状報告の写真を追加",
+    uploadHelp: "写真アルバムから選び、報告文を作成できます",
+    textareaLabel: "現状報告文",
+    textareaPlaceholder: "現状報告文を入力",
+    emptyState: "現状報告写真はまだ追加されていません。",
+    outputOptionTitle: "現状報告",
+    outputOptionHelp: "住所・現状写真・報告文",
+    printTitle: "現状報告",
+    defaultCaption: "現状報告"
+  }
+};
 const LEGACY_DRAFT_STORAGE_KEY = "sanjo_completion_report_draft";
 const DRAFTS_STORAGE_KEY = "sanjo_completion_report_drafts_v2";
 const ACTIVE_DRAFT_STORAGE_KEY = "sanjo_completion_report_active_draft";
@@ -98,6 +132,8 @@ const pageTabs = document.querySelectorAll("[data-page-tab]");
 const pagePanels = document.querySelectorAll("[data-page-panel]");
 const outputInputs = document.querySelectorAll("[name^='output_']");
 const symbolChips = document.querySelectorAll("[data-symbol]");
+const correctionModeLabelElements = document.querySelectorAll("[data-correction-mode-label]");
+const correctionReportTypeInputs = document.querySelectorAll("[name='correctionReportType']");
 let selectedPlanSymbol = PLAN_SYMBOLS[0];
 let draggedMarkerId = null;
 let isPanningPlan = false;
@@ -114,7 +150,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=63").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=64").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -195,6 +231,7 @@ function renderChecks() {
 
 async function initApp() {
   renderChecks();
+  updateCorrectionModeView();
   await loadDraft();
   renderCompletionPhotos();
   renderCorrectionPhotos();
@@ -353,18 +390,19 @@ function renderCompletionPhotos() {
 
 function renderCorrectionPhotos() {
   const photos = state.correctionPhotos.filter((photo) => photo?.src);
+  const labels = getCorrectionReportModeLabels();
   correctionList.innerHTML = photos.length
     ? photos.map((photo) => `
         <article class="correction-card" data-correction-id="${photo.id}">
           <img src="${photo.src}" alt="${escapeHtml(photo.name)}" data-photo-id="${escapeHtml(photo.id)}" loading="lazy" decoding="async">
           <button class="remove-photo" type="button" data-remove-correction="${photo.id}" aria-label="写真を削除">×</button>
           <label class="field">
-            <span>是正依頼文</span>
-            <textarea data-correction-field="comment" rows="2" placeholder="是正依頼文を入力">${escapeHtml(photo.comment || "")}</textarea>
+            <span>${escapeHtml(labels.textareaLabel)}</span>
+            <textarea data-correction-field="comment" rows="2" placeholder="${escapeHtml(labels.textareaPlaceholder)}">${escapeHtml(photo.comment || "")}</textarea>
           </label>
         </article>
       `).join("")
-    : `<p class="empty-state">是正写真はまだ追加されていません。</p>`;
+    : `<p class="empty-state">${escapeHtml(labels.emptyState)}</p>`;
   bindPhotoLoadErrorHandlers(correctionList, "correction");
 }
 
@@ -436,6 +474,7 @@ function getPlanMarkerStyle(marker) {
 
 function getFormData() {
   const data = Object.fromEntries(new FormData(form).entries());
+  data.correctionReportType = normalizeCorrectionReportType(data.correctionReportType);
   data.common = commonItems.map((item, index) => ({
     item,
     status: data[`common_${index}`] || "none"
@@ -453,6 +492,29 @@ function getFormData() {
   data.planMarkers = state.planMarkers;
   data.planView = state.planView;
   return data;
+}
+
+function normalizeCorrectionReportType(value) {
+  return CORRECTION_REPORT_MODES[value] ? value : "correction";
+}
+
+function getCorrectionReportModeLabels(value = form.elements.correctionReportType?.value) {
+  return CORRECTION_REPORT_MODES[normalizeCorrectionReportType(value)];
+}
+
+function setCorrectionReportType(value) {
+  const normalized = normalizeCorrectionReportType(value);
+  const field = form.elements.correctionReportType;
+  if (field) field.value = normalized;
+  updateCorrectionModeView();
+}
+
+function updateCorrectionModeView() {
+  const labels = getCorrectionReportModeLabels();
+  correctionModeLabelElements.forEach((element) => {
+    const key = element.dataset.correctionModeLabel;
+    if (labels[key]) element.textContent = labels[key];
+  });
 }
 
 function commitActiveFormField() {
@@ -629,6 +691,7 @@ async function applyDraftData(data = {}) {
       const field = form.elements[key];
       if (field && typeof value === "string") field.value = value;
     });
+    setCorrectionReportType(data.correctionReportType || "correction");
 
     data.common?.forEach((row, index) => {
       const field = form.querySelector(`[name="common_${index}"][value="${row.status}"]`);
@@ -916,6 +979,7 @@ function formatDraftDate(value) {
 
 function resetCurrentForm() {
   form.reset();
+  setCorrectionReportType("correction");
   missingDraftPhotoCount = 0;
   updatePhotoRestoreNotice();
   state.completionPhotos.forEach(revokePhotoUrl);
@@ -1031,6 +1095,7 @@ function buildPreview() {
   const includeCorrection = selectedOutputs.includes("correction");
   const completionPages = includeCompletion ? photoPages(data.completionPhotos) : [];
   const correctionPages = includeCorrection ? photoPages(data.correctionPhotos) : [];
+  const correctionLabels = getCorrectionReportModeLabels(data.correctionReportType);
   const planPage = includePlan && data.floorPlan?.src ? renderPlanPrintPage(data) : "";
 
   const html = `
@@ -1109,13 +1174,13 @@ function buildPreview() {
     ${planPage}
     ${correctionPages.map((photos, pageIndex) => `
       <section class="print-page correction-page">
-        <h2>是正箇所${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}<span class="print-page-date">${printDate}</span></h2>
+        <h2>${escapeHtml(correctionLabels.printTitle)}${correctionPages.length > 1 ? ` ${pageIndex + 1}` : ""}<span class="print-page-date">${printDate}</span></h2>
         ${pageIndex === 0 ? `<div class="correction-address"><strong>住所</strong><span>${escapeHtml(data.propertyName || "")}</span></div>` : ""}
         <div class="print-photo-grid correction-grid ${pageIndex === 0 ? "has-correction-address" : ""}">
           ${renderNinePhotoSlots(photos, pageIndex, (photo, serial) => `
             <figure class="print-photo correction-print">
               <div class="photo-frame"><img src="${photo.src}" alt=""></div>
-              <figcaption class="correction-caption">${escapeHtml(photo.comment || `是正箇所 ${serial}`)}</figcaption>
+              <figcaption class="correction-caption">${escapeHtml(photo.comment || `${correctionLabels.defaultCaption} ${serial}`)}</figcaption>
             </figure>
           `).join("")}
         </div>
@@ -1270,6 +1335,7 @@ async function exportSelectedPdfDirect() {
   const data = getFormData();
   const correctionPages = photoPages(data.correctionPhotos);
   const completionPages = photoPages(data.completionPhotos);
+  const correctionLabels = getCorrectionReportModeLabels(data.correctionReportType);
   const pages = [];
   const previewPages = [...reportPreview.querySelectorAll(".print-page")];
   let correctionPageIndex = 0;
@@ -1290,12 +1356,13 @@ async function exportSelectedPdfDirect() {
 
     if (page.classList.contains("correction-page")) {
       const canvas = await createPhotoPdfCanvas({
-        title: `是正箇所${correctionPages.length > 1 ? ` ${correctionPageIndex + 1}` : ""}`,
+        title: `${correctionLabels.printTitle}${correctionPages.length > 1 ? ` ${correctionPageIndex + 1}` : ""}`,
         dateText: getPrintDateText(data.inspectionDate),
         photos: correctionPages[correctionPageIndex] || [],
         pageIndex: correctionPageIndex,
         kind: "correction",
-        address: correctionPageIndex === 0 ? data.propertyName || "" : ""
+        address: correctionPageIndex === 0 ? data.propertyName || "" : "",
+        captionPrefix: correctionLabels.defaultCaption
       });
       const imageBytes = await canvasToJpegBytes(canvas);
       pages.push({
@@ -1378,7 +1445,7 @@ async function createFloorPlanPdfCanvas() {
   return { canvas };
 }
 
-async function createPhotoPdfCanvas({ title, dateText, photos, pageIndex, kind, address = "" }) {
+async function createPhotoPdfCanvas({ title, dateText, photos, pageIndex, kind, address = "", captionPrefix = "是正箇所" }) {
   const pageWidth = 1588;
   const pageHeight = 2246;
   const mm = pageWidth / 210;
@@ -1436,7 +1503,8 @@ async function createPhotoPdfCanvas({ title, dateText, photos, pageIndex, kind, 
       frameHeight,
       captionY: y + frameHeight + figureGap,
       captionHeight,
-      kind
+      kind,
+      captionPrefix
     });
   }
 
@@ -1500,7 +1568,7 @@ function drawAddressBox(context, x, y, width, height, address) {
 }
 
 async function drawPhotoSlot(context, options) {
-  const { photo, serial, x, y, width, frameHeight, captionY, captionHeight, kind } = options;
+  const { photo, serial, x, y, width, frameHeight, captionY, captionHeight, kind, captionPrefix = "是正箇所" } = options;
   context.fillStyle = "#fafcfb";
   context.fillRect(x, y, width, frameHeight);
   context.strokeStyle = "#b8c8c0";
@@ -1531,7 +1599,7 @@ async function drawPhotoSlot(context, options) {
     context.strokeStyle = "#9fb4ac";
     context.lineWidth = 2;
     context.strokeRect(x, captionY, width, captionHeight);
-    drawWrappedText(context, photo?.comment || `是正箇所 ${serial}`, x + 10, captionY + 12, width - 20, captionHeight - 18, {
+    drawWrappedText(context, photo?.comment || `${captionPrefix} ${serial}`, x + 10, captionY + 12, width - 20, captionHeight - 18, {
       font: "700 18px system-ui, -apple-system, sans-serif",
       lineHeight: 23,
       align: "center"
@@ -2108,6 +2176,13 @@ initApp();
 
 form.addEventListener("input", saveDraft);
 form.addEventListener("change", saveDraft);
+
+correctionReportTypeInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    updateCorrectionModeView();
+    renderCorrectionPhotos();
+  });
+});
 
 completionInput.addEventListener("change", async (event) => {
   const files = [...event.target.files];
