@@ -65,7 +65,7 @@ const PHOTO_STATUS_BATCH_SIZE = 10;
 const PHOTO_MAX_EDGE = 1600;
 const PHOTO_JPEG_QUALITY = 0.78;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
-const APP_VERSION = "68";
+const APP_VERSION = "70";
 const REPORT_TEMPLATE_IMAGE_SRC = `./assets/templates/completion-report-format.png?v=${APP_VERSION}`;
 const REPORT_TEMPLATE_LAYOUT = {
   width: 1590,
@@ -74,7 +74,7 @@ const REPORT_TEMPLATE_LAYOUT = {
   inspectionDate: { x: 1268, y: 124, width: 245, height: 40 },
   staffName: { x: 1218, y: 242, width: 235, height: 54 },
   propertySpecificMemo: { x: 738, y: 395, width: 710, height: 300 },
-  generalMemo: { x: 78, y: 790, width: 1418, height: 220 },
+  generalMemo: { x: 86, y: 806, width: 1398, height: 184 },
   masks: [
     { x: 1096, y: 1586, width: 245, height: 32 }
   ],
@@ -181,7 +181,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=68").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=70").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -568,35 +568,57 @@ function prepareFormForOutput() {
 function saveOutputSnapshot() {
   try {
     const data = getFormData();
-    sessionStorage.setItem(OUTPUT_SNAPSHOT_STORAGE_KEY, JSON.stringify({
+    const snapshot = JSON.stringify({
       draftId: activeDraftId,
+      savedAt: new Date().toISOString(),
       data: {
         propertyName: data.propertyName || "",
         staffName: data.staffName || "",
-        inspectionDate: data.inspectionDate || ""
+        inspectionDate: data.inspectionDate || "",
+        propertySpecificMemo: data.propertySpecificMemo || "",
+        generalMemo: data.generalMemo || "",
+        correctionReportType: data.correctionReportType || "correction",
+        templateCompletionChecks: data.templateCompletionChecks || {}
       }
-    }));
+    });
+    sessionStorage.setItem(OUTPUT_SNAPSHOT_STORAGE_KEY, snapshot);
+    localStorage.setItem(OUTPUT_SNAPSHOT_STORAGE_KEY, snapshot);
   } catch (error) {
-    // Session storage may be unavailable in private or constrained browser modes.
+    // Storage may be unavailable in private or constrained browser modes.
   }
 }
 
 function restoreOutputSnapshotIfNeeded() {
   let snapshot;
   try {
-    snapshot = JSON.parse(sessionStorage.getItem(OUTPUT_SNAPSHOT_STORAGE_KEY) || "null");
+    snapshot = JSON.parse(
+      sessionStorage.getItem(OUTPUT_SNAPSHOT_STORAGE_KEY)
+      || localStorage.getItem(OUTPUT_SNAPSHOT_STORAGE_KEY)
+      || "null"
+    );
   } catch (error) {
     sessionStorage.removeItem(OUTPUT_SNAPSHOT_STORAGE_KEY);
+    localStorage.removeItem(OUTPUT_SNAPSHOT_STORAGE_KEY);
     return;
   }
 
-  if (!snapshot?.data || snapshot.draftId !== activeDraftId) return;
+  if (!snapshot?.data) return;
   let restored = false;
-  ["propertyName", "staffName", "inspectionDate"].forEach((name) => {
+  ["propertyName", "staffName", "inspectionDate", "propertySpecificMemo", "generalMemo"].forEach((name) => {
     const field = form.elements[name];
     const value = snapshot.data[name];
     if (!field || field.value || !value) return;
     field.value = value;
+    restored = true;
+  });
+  if (snapshot.data.correctionReportType && !form.elements.correctionReportType?.value) {
+    setCorrectionReportType(snapshot.data.correctionReportType);
+    restored = true;
+  }
+  TEMPLATE_COMPLETION_CHECKS.forEach(({ name }) => {
+    const field = form.elements[name];
+    if (!field || field.checked || !snapshot.data.templateCompletionChecks?.[name]) return;
+    field.checked = true;
     restored = true;
   });
 
@@ -2476,6 +2498,10 @@ window.addEventListener("pagehide", () => {
 });
 
 window.addEventListener("pageshow", () => {
+  restoreOutputSnapshotIfNeeded();
+});
+
+window.addEventListener("focus", () => {
   restoreOutputSnapshotIfNeeded();
 });
 

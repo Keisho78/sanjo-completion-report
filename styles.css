@@ -1062,11 +1062,14 @@ button.primary {
 .report-template-text,
 .report-template-row-memo {
   position: absolute;
+  display: block;
   overflow: hidden;
   color: #111;
   font-weight: 700;
   line-height: 1.35;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .report-template-property {
@@ -1082,7 +1085,12 @@ button.primary {
 
 .report-template-property-specific,
 .report-template-general-memo {
-  font-size: 9px;
+  font-size: 8.7px;
+  line-height: 1.28;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-break: anywhere;
 }
 
 .report-template-mark {
@@ -1853,6 +1861,31 @@ button.primary {
     padding: 10mm;
     border: 0;
     box-shadow: none;
+  }
+
+  .template-report-page {
+    position: relative;
+    width: 210mm;
+    min-height: 297mm;
+    height: 297mm;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .template-report-page .report-template-image {
+    width: 210mm;
+    height: 297mm;
+  }
+
+  .template-report-page .report-template-text,
+  .template-report-page .report-template-row-memo {
+    display: block !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-all !important;
+    line-break: anywhere !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .photo-page h2::after,
