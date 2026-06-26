@@ -484,6 +484,17 @@ textarea {
   grid-template-columns: 1fr;
 }
 
+.common-reference-row {
+  min-height: 0;
+  padding: 9px 11px;
+}
+
+.inspection-template-side {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -891,6 +902,31 @@ textarea {
   font-size: 12px;
 }
 
+.template-check-options {
+  display: grid;
+  gap: 8px;
+}
+
+.template-check-options label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.template-check-options input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
 button {
   min-height: 46px;
   border: 1px solid var(--line-strong);
@@ -1007,6 +1043,74 @@ button.primary {
   border-color: #dfe7e2;
   font-size: 10px;
   overflow: hidden;
+}
+
+.template-report-page {
+  position: relative;
+  display: block;
+  padding: 0;
+  border-color: #dfe7e2;
+  font-size: 10px;
+}
+
+.report-template-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.report-template-text,
+.report-template-row-memo {
+  position: absolute;
+  overflow: hidden;
+  color: #111;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.report-template-property {
+  font-size: 15.5px;
+  text-align: center;
+}
+
+.report-template-date,
+.report-template-staff {
+  font-size: 13px;
+  text-align: center;
+}
+
+.report-template-property-specific,
+.report-template-general-memo {
+  font-size: 9px;
+}
+
+.report-template-mark {
+  position: absolute;
+  color: #111;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.report-template-check {
+  position: absolute;
+  color: #111;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.report-template-mask {
+  position: absolute;
+  display: block;
+  background: #fff;
+}
+
+.report-template-row-memo {
+  font-size: 7.4px;
 }
 
 .report-page h2 {

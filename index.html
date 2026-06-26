@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icons/icon-192.png?v=18">
     <link rel="apple-touch-icon" href="./icons/icon-180.png?v=18">
-    <link rel="stylesheet" href="./styles.css?v=64">
+    <link rel="stylesheet" href="./styles.css?v=67">
   </head>
   <body>
     <main class="app-shell">
@@ -87,21 +87,45 @@
 
           <section class="panel">
             <div class="section-title">
-              <h2>全体メモ</h2>
+              <h2>各物件特有</h2>
               <span>報告書</span>
             </div>
           <label class="field">
-            <span>全体メモ</span>
+            <span>各物件特有</span>
+            <textarea name="propertySpecificMemo" rows="4" placeholder="例：既存床のキズ、建具調整済みなど"></textarea>
+          </label>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>メモ</h2>
+              <span>報告書</span>
+            </div>
+          <label class="field">
+            <span>メモ</span>
             <textarea name="generalMemo" rows="4" placeholder="例：床は張り替えていないためキズが残っています。"></textarea>
           </label>
           </section>
 
           <section class="panel">
           <div class="section-title">
-            <h2>全物件共通</h2>
-            <span>チェック</span>
+            <h2>補修済みチェック</h2>
+            <span>報告書</span>
           </div>
-          <div id="commonChecks" class="check-list"></div>
+          <div class="template-check-options">
+            <label>
+              <input type="checkbox" name="templateRepairTilt" value="1">
+              <span>傾斜 補修済み</span>
+            </label>
+            <label>
+              <input type="checkbox" name="templateRepairLeak" value="1">
+              <span>雨漏れ跡 補修済み</span>
+            </label>
+            <label>
+              <input type="checkbox" name="templateTermiteProtected" value="1">
+              <span>蟻道 防蟻済み</span>
+            </label>
+          </div>
           </section>
 
           <section class="panel">
@@ -110,9 +134,9 @@
             <span>チェック</span>
           </div>
           <div class="legend">
-            <span>○ 問題なし</span>
-            <span>△ 詳細確認</span>
-            <span>× 是正</span>
+            <span>○ 無の欄に記入</span>
+            <span>△ 有の欄に記入</span>
+            <span>× 有の欄に記入</span>
             <span>- 未確認</span>
           </div>
           <div id="inspectionChecks" class="inspection-list"></div>
@@ -307,6 +331,6 @@
 
     <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
-    <script src="./app.js?v=64"></script>
+    <script src="./app.js?v=67"></script>
   </body>
 </html>

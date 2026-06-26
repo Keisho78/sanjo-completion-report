@@ -1,7 +1,7 @@
 const commonItems = [
   "建具（窓・扉）不具合",
   "建具（網戸・雨戸）不具合",
-  "クレセント / 取手不具合",
+  "1のクレセント / 鍵 / 取手 不具合",
   "電気不具合",
   "水漏れ",
   "木部腐食",
@@ -16,6 +16,7 @@ const inspectionItems = [
   ["トイレ", "換気扇", "動作音・吸い込みの確認"],
   ["トイレ", "水漏れ", "便器まわり・給排水の確認"],
   ["トイレ", "排水管の状況", "排水時の異音・漏れの確認"],
+  ["トイレ", "鍵", "開閉・施錠の確認"],
   ["洗面室", "水漏れ", "洗面台・給排水の確認"],
   ["洗面室", "排水管の状況", "排水時の異音・漏れの確認"],
   ["浴室", "水漏れ（給湯口含む）", "浴槽・給湯口・排水まわりの確認"],
@@ -30,16 +31,17 @@ const inspectionItems = [
   ["給湯器", "その他不具合", "リモコン・燃焼・年式の確認"],
   ["傾斜", "6/1000以上の勾配", "3m以上の数値を別紙参照"],
   ["傾斜", "床の沈みやたわみ", "歩行時の沈み・きしみ確認"],
-  ["雨漏り跡", "天井 / 内壁", "シミ・浮き・カビの確認"],
-  ["雨漏り跡", "その他不具合", "開口部・外壁側の確認"],
+  ["雨漏り跡", "天井 / 内壁 / 窓枠", "シミ・浮き・カビの確認"],
+  ["水染み跡", "床下", "床下の水染み確認"],
   ["腐食", "木部・鉄部", "腐食・サビ・欠損の確認"],
-  ["躯体", "内外木部 / 基礎", "ひび・欠損の確認"],
+  ["蟻道", "シロアリの害", "蟻道・食害跡の確認"],
   ["バルコニー", "防水層", "浮き・破れ・排水の確認"],
-  ["外壁", "仕上げ材浮き", "浮き・剥がれ・割れの確認"],
+  ["バルコニー", "その他", "手すり・排水・その他不具合の確認"],
+  ["外壁", "仕上げ不具合", "浮き・剥がれ・割れの確認"],
   ["外壁", "クラック", "ひび割れ幅・範囲の確認"],
   ["外壁", "シーリング", "破断・隙間・劣化の確認"],
-  ["基礎", "クラック", "幅・深さ・範囲の確認"],
-  ["外構", "その他不具合", "門扉・塀・土間の確認"],
+  ["基礎", "クラック/不具合", "幅・深さ・範囲の確認"],
+  ["外構", "その他", "門扉・塀・土間の確認"],
   ["網戸", "破れ", "破れ・外れ・動作の確認"],
   ["電気", "通電チェック", "照明・コンセントの確認"],
   ["ガス", "開栓後チェック", "開栓後に動作確認"],
@@ -63,6 +65,35 @@ const PHOTO_STATUS_BATCH_SIZE = 10;
 const PHOTO_MAX_EDGE = 1600;
 const PHOTO_JPEG_QUALITY = 0.78;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
+const APP_VERSION = "67";
+const REPORT_TEMPLATE_IMAGE_SRC = `./assets/templates/completion-report-format.png?v=${APP_VERSION}`;
+const REPORT_TEMPLATE_LAYOUT = {
+  width: 1590,
+  height: 2246,
+  propertyName: { x: 156, y: 242, width: 570, height: 54 },
+  inspectionDate: { x: 1288, y: 122, width: 205, height: 42 },
+  staffName: { x: 1218, y: 242, width: 235, height: 54 },
+  propertySpecificMemo: { x: 738, y: 395, width: 710, height: 300 },
+  generalMemo: { x: 78, y: 790, width: 1418, height: 220 },
+  masks: [
+    { x: 1096, y: 1586, width: 245, height: 32 }
+  ],
+  inspections: {
+    rowsPerSide: 17,
+    firstRowCenterY: 1216,
+    rowHeight: 48.2,
+    mark: {
+      left: { yesX: 462, noX: 542 },
+      right: { yesX: 967, noX: 1047 }
+    },
+    memo: { x: 1094, width: 398, height: 38 }
+  }
+};
+const TEMPLATE_COMPLETION_CHECKS = [
+  { name: "templateRepairTilt", label: "傾斜 補修済み", rowIndex: 0, x: 1374 },
+  { name: "templateRepairLeak", label: "雨漏れ跡 補修済み", rowIndex: 2, x: 1374 },
+  { name: "templateTermiteProtected", label: "蟻道 防蟻済み", rowIndex: 5, x: 1374 }
+];
 const CORRECTION_REPORT_MODES = {
   correction: {
     eyebrow: "是正箇所作成",
@@ -150,7 +181,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=64").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=67").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -197,21 +228,18 @@ function makeSegmented(name, options, value = "none") {
 }
 
 function renderChecks() {
-  commonChecks.innerHTML = commonItems.map((item, index) => `
-    <div class="common-row">
-      <div class="check-title">${index + 1}. ${item}</div>
-      ${makeSegmented(`common_${index}`, [
-        { label: "なし", value: "none" },
-        { label: "あり", value: "check" },
-        { label: "是正", value: "repair" },
-        { label: "-", value: "unknown" }
-      ])}
-    </div>
-  `).join("");
+  if (commonChecks) {
+    commonChecks.innerHTML = commonItems.map((item, index) => `
+      <div class="common-row common-reference-row">
+        <div class="check-title">${getCommonItemSymbol(index)} ${item}</div>
+      </div>
+    `).join("");
+  }
 
   inspectionChecks.innerHTML = inspectionItems.map(([place, item, hint], index) => `
     <div class="inspection-row">
       <div class="inspection-meta">
+        <span class="inspection-template-side">${index < REPORT_TEMPLATE_LAYOUT.inspections.rowsPerSide ? "左列" : "右列"} ${index % REPORT_TEMPLATE_LAYOUT.inspections.rowsPerSide + 1}行目</span>
         <span class="inspection-place">${place}</span>
         <span class="inspection-item">${item}</span>
         <span class="empty-state">${hint}</span>
@@ -227,6 +255,11 @@ function renderChecks() {
       </div>
     </div>
   `).join("");
+}
+
+function getCommonItemSymbol(index) {
+  if (index < 8) return String(index + 1);
+  return index === 8 ? "●" : "○";
 }
 
 async function initApp() {
@@ -486,6 +519,9 @@ function getFormData() {
     status: data[`inspection_${index}`] || "unknown",
     memo: data[`inspectionMemo_${index}`] || ""
   }));
+  data.templateCompletionChecks = Object.fromEntries(
+    TEMPLATE_COMPLETION_CHECKS.map(({ name }) => [name, data[name] === "1"])
+  );
   data.completionPhotos = state.completionPhotos;
   data.correctionPhotos = state.correctionPhotos;
   data.floorPlan = state.floorPlan;
@@ -691,6 +727,7 @@ async function applyDraftData(data = {}) {
       const field = form.elements[key];
       if (field && typeof value === "string") field.value = value;
     });
+    applyTemplateCompletionChecks(data);
     setCorrectionReportType(data.correctionReportType || "correction");
 
     data.common?.forEach((row, index) => {
@@ -738,6 +775,14 @@ async function applyDraftData(data = {}) {
     saveDraft();
     updatePhotoRestoreNotice();
   }
+}
+
+function applyTemplateCompletionChecks(data = {}) {
+  TEMPLATE_COMPLETION_CHECKS.forEach(({ name }) => {
+    const field = form.elements[name];
+    if (!field) return;
+    field.checked = Boolean(data.templateCompletionChecks?.[name] || data[name]);
+  });
 }
 
 function getDraftRecords() {
@@ -1099,78 +1144,7 @@ function buildPreview() {
   const planPage = includePlan && data.floorPlan?.src ? renderPlanPrintPage(data) : "";
 
   const html = `
-    ${includeReport ? `
-    <section class="print-page report-page">
-      <h2>完工報告書</h2>
-      <div class="report-meta">
-        <div><strong>物件名</strong><span>${escapeHtml(data.propertyName || "")}</span></div>
-        <div><strong>担当</strong><span>${escapeHtml(data.staffName || "")}</span></div>
-        <div><strong>確認日</strong><span>${escapeHtml(data.inspectionDate || "")}</span></div>
-        <div><strong>写真枚数</strong><span>${data.completionPhotos.length + data.correctionPhotos.length}枚</span></div>
-      </div>
-      <div class="report-top-grid">
-        <section class="print-section compact-section">
-          <h3>全物件共通</h3>
-          <div class="common-columns">
-            ${splitIntoColumns(data.common, 2).map((rows) => `
-              <table class="print-table common-print-table">
-                <tbody>
-                  ${rows.map((row) => `
-                    <tr>
-                      <td>${escapeHtml(row.item)}</td>
-                      <td class="status-cell status-${escapeHtml(row.status)}">${statusLabel(row.status)}</td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            `).join("")}
-          </div>
-        </section>
-      </div>
-      <section class="print-section compact-section report-memo-section">
-        <h3>メモ</h3>
-        <div class="print-box">${escapeHtml(data.generalMemo || "")}</div>
-      </section>
-      <section class="print-section compact-section">
-        <h3>建物状況調査</h3>
-        <div class="inspection-columns">
-          ${splitIntoColumns(data.inspections, 2).map((rows) => `
-            <table class="print-table inspection-print-table">
-              <thead>
-                <tr><th>箇所</th><th>確認事項</th><th>判定</th><th>メモ</th></tr>
-              </thead>
-              <tbody>
-                ${rows.map((row) => `
-                  <tr>
-                    <td>${escapeHtml(row.place)}</td>
-                    <td>${escapeHtml(row.item)}</td>
-                    <td class="mark-cell mark-${escapeHtml(row.status)}">${inspectionLabel(row.status)}</td>
-                    <td>${escapeHtml(row.memo)}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          `).join("")}
-        </div>
-      </section>
-      <div class="report-note">
-        <section>
-          <h3>・劣化事象等の記号について</h3>
-          <div>「〇」直ちに補修すべき箇所は見当たらない</div>
-          <div>「△」詳細調査した方が良い</div>
-          <div>「×」明らかな不具合と判断される</div>
-          <div>「ー」未確認箇所</div>
-        </section>
-        <section>
-          <h3>・注意事項</h3>
-          <div>本確認は瑕疵がないことを保証するものではありません。</div>
-          <div>確認時点から時間経過による変化がないことを保証するものではありません。</div>
-          <div>本確認は建築基準関係法令等への整合性を判定するものではありません。</div>
-          <div>点検口があった場合のみの確認で、進入調査までは行いません。</div>
-        </section>
-      </div>
-    </section>
-    ` : ""}
+    ${includeReport ? renderReportTemplatePrintPage(data) : ""}
     ${planPage}
     ${correctionPages.map((photos, pageIndex) => `
       <section class="print-page correction-page">
@@ -1208,6 +1182,50 @@ function buildPreview() {
     return false;
   }
   return true;
+}
+
+function renderReportTemplatePrintPage(data) {
+  const fieldStyle = (rect) => `left:${toPercent(rect.x, REPORT_TEMPLATE_LAYOUT.width)}%;top:${toPercent(rect.y, REPORT_TEMPLATE_LAYOUT.height)}%;width:${toPercent(rect.width, REPORT_TEMPLATE_LAYOUT.width)}%;height:${toPercent(rect.height, REPORT_TEMPLATE_LAYOUT.height)}%;`;
+  const maskHtml = REPORT_TEMPLATE_LAYOUT.masks.map((rect) => `
+    <span class="report-template-mask" style="${fieldStyle(rect)}"></span>
+  `).join("");
+  const markHtml = data.inspections.map((row, index) => {
+    const placement = getInspectionStatusPlacement(row.status);
+    if (!placement.column) return "";
+    const slot = getInspectionTemplateSlot(index);
+    const x = REPORT_TEMPLATE_LAYOUT.inspections.mark[slot.side][`${placement.column}X`];
+    const y = getInspectionRowCenterY(slot.rowIndex);
+    return `<span class="report-template-mark" style="left:${toPercent(x, REPORT_TEMPLATE_LAYOUT.width)}%;top:${toPercent(y, REPORT_TEMPLATE_LAYOUT.height)}%;">${escapeHtml(placement.label)}</span>`;
+  }).join("");
+  const completionCheckHtml = TEMPLATE_COMPLETION_CHECKS.map((item) => {
+    if (!data.templateCompletionChecks?.[item.name]) return "";
+    return `<span class="report-template-check" style="left:${toPercent(item.x, REPORT_TEMPLATE_LAYOUT.width)}%;top:${toPercent(getInspectionRowCenterY(item.rowIndex), REPORT_TEMPLATE_LAYOUT.height)}%;">✓</span>`;
+  }).join("");
+  const memoHtml = getInspectionRowMemos(data.inspections).map((memo, rowIndex) => {
+    if (!memo) return "";
+    const layout = REPORT_TEMPLATE_LAYOUT.inspections;
+    const y = getInspectionRowCenterY(rowIndex) - layout.memo.height / 2;
+    return `<span class="report-template-row-memo" style="left:${toPercent(layout.memo.x, REPORT_TEMPLATE_LAYOUT.width)}%;top:${toPercent(y, REPORT_TEMPLATE_LAYOUT.height)}%;width:${toPercent(layout.memo.width, REPORT_TEMPLATE_LAYOUT.width)}%;height:${toPercent(layout.memo.height, REPORT_TEMPLATE_LAYOUT.height)}%;">${escapeHtml(memo)}</span>`;
+  }).join("");
+
+  return `
+    <section class="print-page report-page template-report-page">
+      <img class="report-template-image" src="${REPORT_TEMPLATE_IMAGE_SRC}" alt="">
+      ${maskHtml}
+      <span class="report-template-text report-template-property" style="${fieldStyle(REPORT_TEMPLATE_LAYOUT.propertyName)}">${escapeHtml(data.propertyName || "")}</span>
+      <span class="report-template-text report-template-date" style="${fieldStyle(REPORT_TEMPLATE_LAYOUT.inspectionDate)}">${escapeHtml(formatJapaneseDate(data.inspectionDate))}</span>
+      <span class="report-template-text report-template-staff" style="${fieldStyle(REPORT_TEMPLATE_LAYOUT.staffName)}">${escapeHtml(data.staffName || "")}</span>
+      <span class="report-template-text report-template-property-specific" style="${fieldStyle(REPORT_TEMPLATE_LAYOUT.propertySpecificMemo)}">${escapeHtml(data.propertySpecificMemo || "")}</span>
+      <span class="report-template-text report-template-general-memo" style="${fieldStyle(REPORT_TEMPLATE_LAYOUT.generalMemo)}">${escapeHtml(data.generalMemo || "")}</span>
+      ${markHtml}
+      ${completionCheckHtml}
+      ${memoHtml}
+    </section>
+  `;
+}
+
+function toPercent(value, base) {
+  return ((value / base) * 100).toFixed(4);
 }
 
 function photoPages(photos) {
@@ -1354,6 +1372,19 @@ async function exportSelectedPdfDirect() {
       continue;
     }
 
+    if (page.classList.contains("report-page")) {
+      const canvas = await createTemplateReportPdfCanvas(data);
+      const imageBytes = await canvasToJpegBytes(canvas);
+      pages.push({
+        imageBytes,
+        imageWidth: canvas.width,
+        imageHeight: canvas.height,
+        pageWidth: 595.28,
+        pageHeight: 841.89
+      });
+      continue;
+    }
+
     if (page.classList.contains("correction-page")) {
       const canvas = await createPhotoPdfCanvas({
         title: `${correctionLabels.printTitle}${correctionPages.length > 1 ? ` ${correctionPageIndex + 1}` : ""}`,
@@ -1418,6 +1449,146 @@ async function exportSelectedPdfDirect() {
   saveStatus.textContent = "PDF保存";
   if (previewDialog.open) previewDialog.close();
   return true;
+}
+
+async function createTemplateReportPdfCanvas(data) {
+  const template = await loadImage(REPORT_TEMPLATE_IMAGE_SRC);
+  const canvas = document.createElement("canvas");
+  canvas.width = REPORT_TEMPLATE_LAYOUT.width;
+  canvas.height = REPORT_TEMPLATE_LAYOUT.height;
+  const context = canvas.getContext("2d", { alpha: false });
+
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(template, 0, 0, canvas.width, canvas.height);
+  drawReportTemplateMasks(context);
+
+  drawReportFieldText(context, data.propertyName, REPORT_TEMPLATE_LAYOUT.propertyName, {
+    font: "700 42px system-ui, -apple-system, sans-serif",
+    lineHeight: 48,
+    align: "center"
+  });
+  drawReportFieldText(context, formatJapaneseDate(data.inspectionDate), REPORT_TEMPLATE_LAYOUT.inspectionDate, {
+    font: "700 34px system-ui, -apple-system, sans-serif",
+    lineHeight: 38,
+    align: "center"
+  });
+  drawReportFieldText(context, data.staffName, REPORT_TEMPLATE_LAYOUT.staffName, {
+    font: "700 38px system-ui, -apple-system, sans-serif",
+    lineHeight: 44,
+    align: "center"
+  });
+  drawReportFieldText(context, data.propertySpecificMemo, REPORT_TEMPLATE_LAYOUT.propertySpecificMemo, {
+    font: "700 24px system-ui, -apple-system, sans-serif",
+    lineHeight: 34
+  });
+  drawReportFieldText(context, data.generalMemo, REPORT_TEMPLATE_LAYOUT.generalMemo, {
+    font: "700 24px system-ui, -apple-system, sans-serif",
+    lineHeight: 34
+  });
+
+  data.inspections.forEach((row, index) => {
+    const placement = getInspectionStatusPlacement(row.status);
+    if (!placement.column) return;
+    const slot = getInspectionTemplateSlot(index);
+    const x = REPORT_TEMPLATE_LAYOUT.inspections.mark[slot.side][`${placement.column}X`];
+    const y = getInspectionRowCenterY(slot.rowIndex);
+    drawCenteredReportText(context, placement.label, x, y, "700 31px system-ui, -apple-system, sans-serif");
+  });
+
+  TEMPLATE_COMPLETION_CHECKS.forEach((item) => {
+    if (!data.templateCompletionChecks?.[item.name]) return;
+    drawCenteredReportText(
+      context,
+      "✓",
+      item.x,
+      getInspectionRowCenterY(item.rowIndex),
+      "700 28px system-ui, -apple-system, sans-serif"
+    );
+  });
+
+  getInspectionRowMemos(data.inspections).forEach((memo, rowIndex) => {
+    if (!memo) return;
+    const layout = REPORT_TEMPLATE_LAYOUT.inspections;
+    drawReportFieldText(context, memo, {
+      x: layout.memo.x,
+      y: getInspectionRowCenterY(rowIndex) - layout.memo.height / 2,
+      width: layout.memo.width,
+      height: layout.memo.height
+    }, {
+      font: "700 20px system-ui, -apple-system, sans-serif",
+      lineHeight: 24
+    });
+  });
+
+  return canvas;
+}
+
+function drawReportTemplateMasks(context) {
+  context.fillStyle = "#fff";
+  REPORT_TEMPLATE_LAYOUT.masks.forEach((rect) => {
+    context.fillRect(rect.x, rect.y, rect.width, rect.height);
+  });
+}
+
+function drawReportFieldText(context, text, rect, options = {}) {
+  const value = String(text || "").trim();
+  if (!value) return;
+  drawWrappedText(context, value, rect.x, rect.y, rect.width, rect.height, {
+    font: options.font || "700 22px system-ui, -apple-system, sans-serif",
+    lineHeight: options.lineHeight || 28,
+    align: options.align || "left"
+  });
+}
+
+function drawCenteredReportText(context, text, x, y, font) {
+  context.fillStyle = "#111";
+  context.font = font;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(text, x, y);
+}
+
+function getInspectionStatusPlacement(status) {
+  if (status === "ok") return { column: "no", label: "○" };
+  if (status === "check") return { column: "yes", label: "△" };
+  if (status === "repair") return { column: "yes", label: "×" };
+  return { column: null, label: "" };
+}
+
+function getInspectionTemplateSlot(index) {
+  const rowsPerSide = REPORT_TEMPLATE_LAYOUT.inspections.rowsPerSide;
+  return {
+    side: index < rowsPerSide ? "left" : "right",
+    rowIndex: index % rowsPerSide
+  };
+}
+
+function getInspectionRowCenterY(rowIndex) {
+  const layout = REPORT_TEMPLATE_LAYOUT.inspections;
+  return layout.firstRowCenterY + rowIndex * layout.rowHeight;
+}
+
+function getInspectionRowMemos(inspections) {
+  const rowsPerSide = REPORT_TEMPLATE_LAYOUT.inspections.rowsPerSide;
+  return Array.from({ length: rowsPerSide }, (_, rowIndex) => {
+    const left = inspections[rowIndex];
+    const right = inspections[rowIndex + rowsPerSide];
+    return [formatInspectionMemo(left), formatInspectionMemo(right)].filter(Boolean).join(" / ");
+  });
+}
+
+function formatInspectionMemo(row) {
+  const memo = String(row?.memo || "").trim();
+  if (!memo) return "";
+  return `${row.place} ${row.item}: ${memo}`;
+}
+
+function formatJapaneseDate(value) {
+  if (!value) return "";
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return String(value);
+  return `${Number(year)}年${Number(month)}月${Number(day)}日`;
 }
 
 async function createFloorPlanPdfCanvas() {
