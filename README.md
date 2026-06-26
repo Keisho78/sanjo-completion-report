@@ -22,6 +22,20 @@
 
 完工報告書の1ページ目は `assets/templates/completion-report-format.png` を背景として固定描画し、入力値だけを上に重ねてPDF化します。元PDFは `assets/templates/completion-report-format.pdf` に保管しています。
 
+## 更新手順
+
+公開サイトへ反映する時は、毎回この順番で作業します。
+
+1. アプリを修正する
+2. `CHANGELOG.md` に変更内容を記録する
+3. `bash scripts/prepublish-check.sh` を実行する
+4. ブラウザで入力画面、PDFプレビュー、PDF保存を確認する
+5. `git commit` で変更ログを残す
+6. `git push origin main` でGitHubへ反映する
+7. GitHub Pages のビルド成功と公開URLを確認する
+
+詳しい確認項目は `RELEASE_CHECKLIST.md` にまとめています。
+
 ## 注意
 
 PWAのインストールとオフラインキャッシュには、原則としてHTTPS配信が必要です。Macの `http://192.168...` から開く方法は動作確認には使えますが、スマホ単体で安定して使う本番運用には向きません。
