@@ -65,13 +65,13 @@ const PHOTO_STATUS_BATCH_SIZE = 10;
 const PHOTO_MAX_EDGE = 1600;
 const PHOTO_JPEG_QUALITY = 0.78;
 const PLAN_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8", "●", "○"];
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 const REPORT_TEMPLATE_IMAGE_SRC = `./assets/templates/completion-report-format.png?v=${APP_VERSION}`;
 const REPORT_TEMPLATE_LAYOUT = {
   width: 1590,
   height: 2246,
   propertyName: { x: 156, y: 242, width: 570, height: 54 },
-  inspectionDate: { x: 1288, y: 122, width: 205, height: 42 },
+  inspectionDate: { x: 1268, y: 124, width: 245, height: 40 },
   staffName: { x: 1218, y: 242, width: 235, height: 54 },
   propertySpecificMemo: { x: 738, y: 395, width: 710, height: 300 },
   generalMemo: { x: 78, y: 790, width: 1418, height: 220 },
@@ -181,7 +181,7 @@ document.head.append(printPageStyle);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js?v=67").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js?v=68").catch(() => {
       saveStatus.textContent = "通常表示";
     });
   });
@@ -1469,8 +1469,8 @@ async function createTemplateReportPdfCanvas(data) {
     align: "center"
   });
   drawReportFieldText(context, formatJapaneseDate(data.inspectionDate), REPORT_TEMPLATE_LAYOUT.inspectionDate, {
-    font: "700 34px system-ui, -apple-system, sans-serif",
-    lineHeight: 38,
+    font: "700 28px system-ui, -apple-system, sans-serif",
+    lineHeight: 32,
     align: "center"
   });
   drawReportFieldText(context, data.staffName, REPORT_TEMPLATE_LAYOUT.staffName, {
@@ -1683,16 +1683,35 @@ async function createPhotoPdfCanvas({ title, dateText, photos, pageIndex, kind, 
 }
 
 function drawPdfPageHeader(context, { title, dateText, x, y, width, height }) {
-  context.fillStyle = "#0b4f43";
-  context.fillRect(x, y, width, height);
   context.fillStyle = "#fff";
-  context.font = "700 36px system-ui, -apple-system, sans-serif";
+  context.fillRect(x, y, width, height);
+  context.strokeStyle = "#9fb4ac";
+  context.lineWidth = 2;
+  context.strokeRect(x, y, width, height);
+
+  context.fillStyle = "#0b4f43";
+  context.fillRect(x, y, 12, height);
+
+  context.fillStyle = "#111816";
+  context.font = "700 34px system-ui, -apple-system, sans-serif";
   context.textAlign = "left";
   context.textBaseline = "middle";
-  context.fillText(title, x + 28, y + height / 2);
+  context.fillText(title, x + 32, y + height / 2);
+
+  const label = dateText || "確認日";
+  const datePaddingX = 18;
+  const dateBoxHeight = height - 26;
   context.font = "700 18px system-ui, -apple-system, sans-serif";
-  context.textAlign = "right";
-  context.fillText(dateText || "確認日", x + width - 28, y + height / 2);
+  const dateBoxWidth = Math.min(300, Math.max(170, context.measureText(label).width + datePaddingX * 2));
+  const dateX = x + width - dateBoxWidth - 22;
+  const dateY = y + (height - dateBoxHeight) / 2;
+  context.fillStyle = "#f7faf8";
+  context.fillRect(dateX, dateY, dateBoxWidth, dateBoxHeight);
+  context.strokeStyle = "#c9d4ce";
+  context.strokeRect(dateX, dateY, dateBoxWidth, dateBoxHeight);
+  context.fillStyle = "#111816";
+  context.textAlign = "center";
+  context.fillText(label, dateX + dateBoxWidth / 2, y + height / 2);
 }
 
 function drawPlanDateForPdf(context, dateText, pageWidth) {

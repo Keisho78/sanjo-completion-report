@@ -1076,7 +1076,7 @@ button.primary {
 
 .report-template-date,
 .report-template-staff {
-  font-size: 13px;
+  font-size: 11.5px;
   text-align: center;
 }
 
@@ -1435,17 +1435,30 @@ button.primary {
 
 .photo-page h2,
 .correction-page h2 {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 11mm;
+  min-height: 12mm;
   margin: 0 0 4mm;
-  padding: 0 4mm;
-  border-radius: 1.5mm;
-  background: #0b4f43;
-  color: #fff;
+  padding: 0 4mm 0 5.6mm;
+  border: 1px solid #9fb4ac;
+  border-radius: 1mm;
+  background: #fff;
+  color: #111816;
   font-size: 15px;
   text-align: left;
+}
+
+.photo-page h2::before,
+.correction-page h2::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1.6mm;
+  background: #0b4f43;
 }
 
 .photo-page h2::after,
@@ -1457,7 +1470,12 @@ button.primary {
 .print-page-date {
   display: inline-block;
   margin-left: auto;
-  font-size: 9px;
+  padding: 1.3mm 2.4mm;
+  border: 1px solid #c9d4ce;
+  border-radius: 0.8mm;
+  background: #f7faf8;
+  color: #111816;
+  font-size: 8.5px;
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1846,7 +1864,7 @@ button.primary {
   .photo-page .print-page-date,
   .correction-page .print-page-date {
     display: inline-block !important;
-    color: #fff !important;
+    color: #111816 !important;
   }
 
   .plan-page.is-landscape-plan {
